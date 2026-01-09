@@ -1,0 +1,219 @@
+{
+  "info": {
+    "name": "AI Shopping Agent API",
+    "description": "Complete API collection for testing the AI Shopping Agent backend",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/health",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["health"]
+        },
+        "description": "Check if the server is running and healthy"
+      }
+    },
+    {
+      "name": "API Status",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/api/status",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "status"]
+        },
+        "description": "Get detailed server and agent configuration status"
+      }
+    },
+    {
+      "name": "Search Products - iPhone",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"query\": \"iPhone 15\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/api/search",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "search"]
+        },
+        "description": "Direct product search on Shopee - returns products with names, prices, and links"
+      }
+    },
+    {
+      "name": "Search Products - Laptop",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"query\": \"laptop gaming\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/api/search",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "search"]
+        },
+        "description": "Search for gaming laptops"
+      }
+    },
+    {
+      "name": "Search Products - Samsung",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"query\": \"Samsung Galaxy S24\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/api/search",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "search"]
+        },
+        "description": "Search for Samsung phones"
+      }
+    },
+    {
+      "name": "Chat with AI - Find Products",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"message\": \"Tìm iPhone 15 cho tôi\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/api/chat",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "chat"]
+        },
+        "description": "Chat with AI agent in Vietnamese - agent will search and provide recommendations"
+      }
+    },
+    {
+      "name": "Chat with AI - Gaming Laptop",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"message\": \"Tìm laptop gaming giá rẻ dưới 20 triệu\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/api/chat",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "chat"]
+        },
+        "description": "Ask AI to find affordable gaming laptops"
+      }
+    },
+    {
+      "name": "Chat with AI - Headphones",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"message\": \"Tìm tai nghe bluetooth chất lượng tốt\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/api/chat",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "chat"]
+        },
+        "description": "Ask AI to find quality Bluetooth headphones"
+      }
+    },
+    {
+      "name": "Quick Test - Default",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/api/test",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "test"]
+        },
+        "description": "Quick test with default query (iPhone 15)"
+      }
+    },
+    {
+      "name": "Quick Test - Custom Query",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/api/test?q=điện thoại xiaomi",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "test"],
+          "query": [
+            {
+              "key": "q",
+              "value": "điện thoại xiaomi"
+            }
+          ]
+        },
+        "description": "Quick test with custom query parameter"
+      }
+    }
+  ]
+}
