@@ -2,10 +2,11 @@ import http from 'http';
 import { config, logConfig } from './config';
 import { createApp } from './app';
 import { initializeSocketService } from './services/socketService';
+import { connectDatabase, disconnectDatabase } from './database/db';
 
 /**
  * Main server entry point
- * Sets up HTTP server, Express app, and Socket.io
+ * Sets up HTTP server, Express app, Socket.io, and MongoDB database
  */
 
 // Create Express app
@@ -20,19 +21,28 @@ const socketService = initializeSocketService(httpServer);
 /**
  * Start the server
  */
-function startServer(): void {
-  httpServer.listen(config.server.port, () => {
-    console.log('\n' + '='.repeat(60));
-    console.log('🚀 AI Shopping Agent Server Started Successfully!');
-    console.log('='.repeat(60));
-    logConfig();
-    console.log('='.repeat(60));
-    console.log(`🌐 Server running at: http://localhost:${config.server.port}`);
-    console.log(`🔌 Socket.io ready for connections`);
-    console.log(`📊 Health check: http://localhost:${config.server.port}/health`);
-    console.log('='.repeat(60) + '\n');
-    console.log('💡 Waiting for client connections...\n');
-  });
+async function startServer(): Promise<void> {
+  try {
+    // Connect to MongoDB first
+    await connectDatabase();
+
+    // Start HTTP server
+    httpServer.listen(config.server.port, () => {
+      console.log('\n' + '='.repeat(60));
+      console.log('🚀 Personal Finance AI Agent Server Started!');
+      console.log('='.repeat(60));
+      logConfig();
+      console.log('='.repeat(60));
+      console.log(`🌐 Server running at: http://localhost:${config.server.port}`);
+      console.log(`🔌 Socket.io ready for connections`);
+      console.log(`📊 Health check: http://localhost:${config.server.port}/health`);
+      console.log('='.repeat(60) + '\n');
+      console.log('💡 Waiting for client connections...\n');
+    });
+  } catch (error) {
+    console.error('❌ Failed to start server:', error);
+    process.exit(1);
+  }
 }
 
 /**
@@ -48,6 +58,9 @@ async function gracefulShutdown(signal: string): Promise<void> {
 
       // Shutdown Socket.io
       await socketService.shutdown();
+
+      // Disconnect from MongoDB
+      await disconnectDatabase();
 
       console.log('✅ Graceful shutdown complete');
       process.exit(0);

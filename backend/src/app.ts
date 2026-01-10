@@ -1,238 +1,218 @@
 import express, { Application, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import { config } from './config';
-import { searchShopee } from './tools/shopeeScraper';
-import { runAgent } from './agents/shoppingAgent';
+import { Transaction } from './database/db';
+import { scanReceipt } from './services/geminiService';
+import { predictEndOfMonth } from './services/forecastService';
 
 /**
- * Error interface for consistent error handling
- */
-interface ApiError extends Error {
-  statusCode?: number;
-}
-
-/**
- * Mock socket for HTTP API calls
- */
-class MockSocket {
-  private events: { [key: string]: any[] } = {};
-
-  emit(event: string, data: any): void {
-    if (!this.events[event]) {
-      this.events[event] = [];
-    }
-    this.events[event].push(data);
-  }
-
-  getEvents(): { [key: string]: any[] } {
-    return this.events;
-  }
-}
-
-/**
- * Create and configure the Express application
+ * Create and configure Express application
  */
 export function createApp(): Application {
   const app = express();
 
-  // ==================== Middleware ====================
-
-  // CORS - Allow cross-origin requests from Flutter app
-  app.use(
-    cors({
-      origin: config.server.corsOrigins,
-      credentials: true,
-      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization'],
-    })
-  );
-
-  // Body parser - Parse JSON bodies
-  app.use(express.json({ limit: '10mb' }));
-  app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+  // Middleware - CORS with permissive settings for development
+  app.use(cors({
+    origin: true, // Allow all origins in development
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  }));
+  
+  app.use(express.json());
+  app.use(express.urlencoded({ extended: true }));
 
   // Request logging middleware
   app.use((req: Request, res: Response, next: NextFunction) => {
-    const timestamp = new Date().toISOString();
-    console.log(`[${timestamp}] ${req.method} ${req.path}`);
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
     next();
   });
 
-  // ==================== Health Check Routes ====================
-
-  /**
-   * Health check endpoint
-   * Used by monitoring systems and to verify the server is running
-   */
+  // Health check endpoint
   app.get('/health', (req: Request, res: Response) => {
-    res.status(200).json({
-      status: 'healthy',
+    res.json({
+      status: 'ok',
+      message: 'Personal Finance AI Agent is running',
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
-      environment: config.server.nodeEnv,
     });
   });
 
-  /**
-   * Root endpoint - API information
-   */
-  app.get('/', (req: Request, res: Response) => {
-    res.status(200).json({
-      name: 'AI Shopping Agent API',
-      version: '1.0.0',
-      description: 'Backend for Autonomous AI Shopping Agent targeting Vietnamese e-commerce',
-      endpoints: {
-        health: '/health',
-        websocket: 'Connect via Socket.io on the same port',
-      },
-      documentation: 'Use Socket.io to connect and send "user_message" events',
-    });
-  });
-
-  /**
-   * API status endpoint with more detailed information
-   */
+  // API status endpoint
   app.get('/api/status', (req: Request, res: Response) => {
-    res.status(200).json({
-      server: {
-        status: 'running',
-        environment: config.server.nodeEnv,
-        uptime: process.uptime(),
-        timestamp: new Date().toISOString(),
-      },
-      agent: {
-        model: config.agent.model,
-        temperature: config.agent.temperature,
-        maxProducts: config.agent.maxProductsPerSearch,
-      },
-      features: {
-        shopeeSearch: true,
-        realTimeUpdates: true,
-        vietnameseLanguage: true,
-      },
+    res.json({
+      service: 'Personal Finance AI Agent',
+      version: '1.0.0',
+      agent: config.agent.model,
+      features: [
+        'Expense tracking',
+        'Monthly summaries',
+        'Gold price lookup',
+        'USD exchange rate',
+      ],
     });
   });
 
-  /**
-   * POST /api/search - Direct product search
-   * Test with Postman: POST http://localhost:3000/api/search
-   * Body: { "query": "iPhone 15" }
-   */
-  app.post('/api/search', async (req: Request, res: Response, next: NextFunction) => {
+  // Get recent transactions
+  app.get('/api/transactions/recent', async (req: Request, res: Response) => {
     try {
-      const { query } = req.body;
+      const limit = parseInt(req.query.limit as string) || 10;
+      const transactions = await Transaction.find()
+        .sort({ date: -1 })
+        .limit(limit);
 
-      if (!query || typeof query !== 'string') {
-        return res.status(400).json({
-          error: 'Bad Request',
-          message: 'Query parameter is required and must be a string',
+      res.json({
+        success: true,
+        count: transactions.length,
+        transactions,
+      });
+    } catch (error) {
+      console.error('Error fetching transactions:', error);
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
+  // Get transactions by month
+  app.get('/api/transactions/month/:year/:month', async (req: Request, res: Response) => {
+    try {
+      const { year, month } = req.params;
+      const startDate = `${year}-${month.padStart(2, '0')}-01`;
+      const endDate = `${year}-${month.padStart(2, '0')}-31`;
+
+      console.log(`📊 Querying transactions: ${startDate} to ${endDate}`);
+
+      const transactions = await Transaction.find({
+        date: { $gte: startDate, $lte: endDate },
+      }).sort({ date: -1 });
+
+      console.log(`📊 Found ${transactions.length} transactions for ${month}/${year}`);
+      if (transactions.length > 0) {
+        console.log('First transaction:', {
+          date: transactions[0].date,
+          amount: transactions[0].amount,
+          category: transactions[0].category,
+          merchant: transactions[0].merchant,
         });
       }
 
-      console.log(`🔍 API Search request: "${query}"`);
+      const total = transactions.reduce((sum, t) => sum + t.amount, 0);
 
-      const result = await searchShopee(query);
-
-      res.status(200).json({
-        success: result.success,
-        query,
-        products: result.products,
-        totalFound: result.products.length,
-        message: result.message,
-        timestamp: result.timestamp,
+      res.json({
+        success: true,
+        period: `${month}/${year}`,
+        count: transactions.length,
+        total,
+        totalFormatted: `${total.toLocaleString('vi-VN')}đ`,
+        transactions,
       });
     } catch (error) {
-      next(error);
+      console.error('Error fetching monthly transactions:', error);
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
     }
   });
 
+  // ==================== RECEIPT SCANNING ENDPOINT ====================
   /**
-   * POST /api/chat - Chat with AI agent
-   * Test with Postman: POST http://localhost:3000/api/chat
-   * Body: { "message": "Tìm laptop gaming giá rẻ" }
+   * POST /api/scan-receipt
+   * Submit receipt text and extract transaction data using local AI
    */
-  app.post('/api/chat', async (req: Request, res: Response, next: NextFunction) => {
+  app.post('/api/scan-receipt', async (req: Request, res: Response) => {
     try {
-      const { message } = req.body;
+      const { receiptText } = req.body;
 
-      if (!message || typeof message !== 'string') {
+      if (!receiptText || typeof receiptText !== 'string') {
         return res.status(400).json({
-          error: 'Bad Request',
-          message: 'Message parameter is required and must be a string',
+          success: false,
+          error: 'Missing receipt text. Please provide receiptText in request body.',
         });
       }
 
-      console.log(`💬 API Chat request: "${message}"`);
+      console.log(`� Processing receipt text (${receiptText.length} chars)...`);
 
-      // Use mock socket for HTTP requests
-      const mockSocket = new MockSocket() as any;
-      const response = await runAgent(message, mockSocket);
+      // Scan the receipt using local Ollama AI
+      const receiptData = await scanReceipt(receiptText);
 
-      res.status(200).json({
-        success: response.success,
-        answer: response.answer,
-        products: response.products,
-        events: mockSocket.getEvents(),
-        error: response.error,
-        timestamp: new Date().toISOString(),
+      // Save to MongoDB
+      const transaction = await Transaction.create({
+        amount: receiptData.amount,
+        category: receiptData.category,
+        merchant: receiptData.merchant,
+        note: receiptData.rawText || '',
+        date: receiptData.date,
       });
+
+      console.log(`✅ Transaction saved: ${transaction._id}`);
+
+      return res.json({
+        success: true,
+        message: 'Receipt scanned and transaction saved successfully',
+        data: {
+          transactionId: transaction._id,
+          amount: transaction.amount,
+          category: transaction.category,
+          merchant: transaction.merchant,
+          date: transaction.date,
+          note: transaction.note,
+        },
+      });
+
     } catch (error) {
-      next(error);
+      console.error('❌ Receipt scan error:', error);
+      return res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to process receipt',
+      });
     }
   });
 
+  // ==================== EXPENSE FORECAST ENDPOINT ====================
   /**
-   * GET /api/test - Quick test endpoint
+   * GET /api/forecast
+   * Predict end-of-month spending using linear regression
    */
-  app.get('/api/test', async (req: Request, res: Response, next: NextFunction) => {
+  app.get('/api/forecast', async (_req: Request, res: Response) => {
     try {
-      const testQuery = req.query.q as string || 'iPhone 15';
-      
-      console.log(`🧪 Test request: "${testQuery}"`);
+      console.log('📊 Generating expense forecast...');
 
-      const result = await searchShopee(testQuery, 3);
+      // Get forecast prediction
+      const forecast = await predictEndOfMonth();
 
-      res.status(200).json({
-        message: 'Test successful!',
-        query: testQuery,
-        productsFound: result.products.length,
-        products: result.products,
-        timestamp: new Date().toISOString(),
+      console.log(`✅ Forecast generated: ${forecast.predicted_total} VND (${forecast.safety_status})`);
+
+      return res.json({
+        success: true,
+        forecast,
       });
+
     } catch (error) {
-      next(error);
+      console.error('❌ Forecast error:', error);
+      return res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to generate forecast',
+      });
     }
   });
 
-  // ==================== Error Handling ====================
-
-  /**
-   * 404 handler - Route not found
-   */
+  // 404 handler
   app.use((req: Request, res: Response) => {
     res.status(404).json({
       error: 'Not Found',
       message: `Route ${req.method} ${req.path} not found`,
-      timestamp: new Date().toISOString(),
     });
   });
 
-  /**
-   * Global error handler
-   */
-  app.use((err: ApiError, req: Request, res: Response, next: NextFunction) => {
-    console.error('❌ Express error:', err);
-
-    const statusCode = err.statusCode || 500;
-    const message = err.message || 'Internal Server Error';
-
-    res.status(statusCode).json({
-      error: statusCode === 500 ? 'Internal Server Error' : err.name,
-      message: config.server.nodeEnv === 'production' && statusCode === 500 
-        ? 'An unexpected error occurred' 
-        : message,
-      timestamp: new Date().toISOString(),
-      ...(config.server.nodeEnv === 'development' && { stack: err.stack }),
+  // Error handling middleware
+  app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+    console.error('Express error:', err);
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: err.message,
     });
   });
 

@@ -1,19 +1,25 @@
 /**
- * Simple Socket.io Test Client
+ * Personal Finance AI Agent - Socket.io Test Client
  * 
- * This script tests the Socket.io connection and agent functionality.
+ * This script tests the Socket.io connection and finance agent functionality.
  * 
  * Usage:
- *   1. Make sure the server is running (npm run dev)
- *   2. Install socket.io-client if not already: npm install socket.io-client
- *   3. Run this script: node test-client.js
+ *   1. Make sure MongoDB is running (mongod)
+ *   2. Make sure the server is running (npm run dev)
+ *   3. Install socket.io-client if not already: npm install socket.io-client
+ *   4. Run this script: node test-client.js
  */
 
 const io = require('socket.io-client');
 
 // Configuration
 const SERVER_URL = 'http://localhost:3000';
-const TEST_QUERY = 'Tìm iPhone 15 cho tôi';
+const TEST_QUERIES = [
+  'Sáng nay ăn phở hết 50k',
+  'Tháng này tôi tiêu bao nhiêu?',
+  'Giá vàng SJC hôm nay thế nào?',
+];
+const TEST_QUERY = TEST_QUERIES[0]; // Change index to test different queries
 
 console.log('🔌 Connecting to server:', SERVER_URL);
 console.log('📝 Test query:', TEST_QUERY);
@@ -29,14 +35,17 @@ const socket = io(SERVER_URL, {
 
 // Connection successful
 socket.on('connected', (data) => {
-  console.log('✅ Connected to server!');
+  console.log('✅ Connected to Finance Agent!');
   console.log('   Socket ID:', data.socketId);
   console.log('   Message:', data.message);
+  console.log('─'.repeat(60));
+  console.log('\n💡 Available test queries:');
+  TEST_QUERIES.forEach((q, i) => console.log(`   ${i + 1}. ${q}`));
   console.log('─'.repeat(60));
 
   // Send test query after connection
   setTimeout(() => {
-    console.log('\n📤 Sending query to agent...');
+    console.log(`\n📤 Sending query to agent: "${TEST_QUERY}"`);
     socket.emit('user_message', {
       message: TEST_QUERY,
     });
@@ -67,34 +76,30 @@ socket.on('agent_status', (data) => {
 // Final agent response
 socket.on('agent_response', (data) => {
   console.log('─'.repeat(60));
-  console.log('\n🎉 AGENT RESPONSE RECEIVED\n');
+  console.log('\n🎉 FINANCE AGENT RESPONSE\n');
   
   if (data.success) {
     console.log('✅ Success:', data.success);
-    console.log('\n📝 Answer:');
+    console.log('\n📝 Agent Answer:');
+    console.log('─'.repeat(60));
     console.log(data.answer);
-    
-    if (data.products && data.products.length > 0) {
-      console.log('\n📦 Products Found:', data.products.length);
-      console.log('─'.repeat(60));
-      
-      data.products.forEach((product, idx) => {
-        console.log(`\n${idx + 1}. ${product.name}`);
-        console.log(`   💰 Price: ${product.price}`);
-        if (product.shop) console.log(`   🏪 Shop: ${product.shop}`);
-        if (product.rating) console.log(`   ⭐ Rating: ${product.rating}/5`);
-        if (product.soldCount) console.log(`   📊 Sold: ${product.soldCount}`);
-        console.log(`   🔗 Link: ${product.link}`);
-      });
-    } else {
-      console.log('\n⚠️ No products found in response');
-    }
+    console.log('─'.repeat(60));
   } else {
     console.log('❌ Error:', data.error);
+    console.log('\n⚠️ Possible issues:');
+    console.log('   - MongoDB not running');
+    console.log('   - Google API key invalid');
+    console.log('   - Network connection issue');
   }
   
-  console.log('\n' + '─'.repeat(60));
-  console.log('✅ Test completed successfully!');
+  console.log('\n✅ Test completed!');
+  console.log('─'.repeat(60));
+  console.log('\n💡 Try these queries next:');
+  TEST_QUERIES.forEach((q, i) => {
+    if (q !== TEST_QUERY) console.log(`   - ${q}`);
+  });
+  console.log('   - "Tỷ giá USD bao nhiêu?"');
+  console.log('   - "Hôm qua mua cafe 30k, ăn trưa 80k"');
   console.log('─'.repeat(60));
   
   // Close connection and exit

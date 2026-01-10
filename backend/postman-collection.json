@@ -1,219 +1,264 @@
 {
   "info": {
-    "name": "AI Shopping Agent API",
-    "description": "Complete API collection for testing the AI Shopping Agent backend",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    "name": "Personal Finance AI Agent API",
+    "description": "Complete API testing collection for Personal Finance AI Agent Backend",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "1.0.0"
   },
   "item": [
     {
-      "name": "Health Check",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "http://localhost:3000/health",
-          "protocol": "http",
-          "host": ["localhost"],
-          "port": "3000",
-          "path": ["health"]
+      "name": "Health & Status",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/health",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["health"]
+            },
+            "description": "Check if the server is running and healthy"
+          },
+          "response": []
         },
-        "description": "Check if the server is running and healthy"
-      }
+        {
+          "name": "API Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/api/status",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "status"]
+            },
+            "description": "Get API status and available features"
+          },
+          "response": []
+        }
+      ],
+      "description": "Server health check and status endpoints"
     },
     {
-      "name": "API Status",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "http://localhost:3000/api/status",
-          "protocol": "http",
-          "host": ["localhost"],
-          "port": "3000",
-          "path": ["api", "status"]
+      "name": "Transactions",
+      "item": [
+        {
+          "name": "Get Recent Transactions (Default 10)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/api/transactions/recent",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "transactions", "recent"]
+            },
+            "description": "Get the 10 most recent transactions"
+          },
+          "response": []
         },
-        "description": "Get detailed server and agent configuration status"
-      }
+        {
+          "name": "Get Recent Transactions (Custom Limit)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/api/transactions/recent?limit=20",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "transactions", "recent"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "20",
+                  "description": "Number of transactions to return"
+                }
+              ]
+            },
+            "description": "Get recent transactions with custom limit (e.g., 20 items)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Transactions by Month (January 2026)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/api/transactions/month/2026/1",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "transactions", "month", "2026", "1"]
+            },
+            "description": "Get all transactions for January 2026"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Transactions by Month (December 2025)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/api/transactions/month/2025/12",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "transactions", "month", "2025", "12"]
+            },
+            "description": "Get all transactions for December 2025"
+          },
+          "response": []
+        }
+      ],
+      "description": "Endpoints for retrieving transaction data"
     },
     {
-      "name": "Search Products - iPhone",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"query\": \"iPhone 15\"\n}"
-        },
-        "url": {
-          "raw": "http://localhost:3000/api/search",
-          "protocol": "http",
-          "host": ["localhost"],
-          "port": "3000",
-          "path": ["api", "search"]
-        },
-        "description": "Direct product search on Shopee - returns products with names, prices, and links"
-      }
+      "name": "Socket.IO Tests",
+      "item": [
+        {
+          "name": "Socket Connection Info",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/socket.io/?EIO=4&transport=polling",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["socket.io", ""],
+              "query": [
+                {
+                  "key": "EIO",
+                  "value": "4"
+                },
+                {
+                  "key": "transport",
+                  "value": "polling"
+                }
+              ]
+            },
+            "description": "Test Socket.IO endpoint (polling transport)"
+          },
+          "response": []
+        }
+      ],
+      "description": "Socket.IO connection tests (For full testing, use Socket.IO client or test-client.js)"
     },
     {
-      "name": "Search Products - Laptop",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"query\": \"laptop gaming\"\n}"
-        },
-        "url": {
-          "raw": "http://localhost:3000/api/search",
-          "protocol": "http",
-          "host": ["localhost"],
-          "port": "3000",
-          "path": ["api", "search"]
-        },
-        "description": "Search for gaming laptops"
-      }
-    },
-    {
-      "name": "Search Products - Samsung",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"query\": \"Samsung Galaxy S24\"\n}"
-        },
-        "url": {
-          "raw": "http://localhost:3000/api/search",
-          "protocol": "http",
-          "host": ["localhost"],
-          "port": "3000",
-          "path": ["api", "search"]
-        },
-        "description": "Search for Samsung phones"
-      }
-    },
-    {
-      "name": "Chat with AI - Find Products",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"message\": \"Tìm iPhone 15 cho tôi\"\n}"
-        },
-        "url": {
-          "raw": "http://localhost:3000/api/chat",
-          "protocol": "http",
-          "host": ["localhost"],
-          "port": "3000",
-          "path": ["api", "chat"]
-        },
-        "description": "Chat with AI agent in Vietnamese - agent will search and provide recommendations"
-      }
-    },
-    {
-      "name": "Chat with AI - Gaming Laptop",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"message\": \"Tìm laptop gaming giá rẻ dưới 20 triệu\"\n}"
-        },
-        "url": {
-          "raw": "http://localhost:3000/api/chat",
-          "protocol": "http",
-          "host": ["localhost"],
-          "port": "3000",
-          "path": ["api", "chat"]
-        },
-        "description": "Ask AI to find affordable gaming laptops"
-      }
-    },
-    {
-      "name": "Chat with AI - Headphones",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"message\": \"Tìm tai nghe bluetooth chất lượng tốt\"\n}"
-        },
-        "url": {
-          "raw": "http://localhost:3000/api/chat",
-          "protocol": "http",
-          "host": ["localhost"],
-          "port": "3000",
-          "path": ["api", "chat"]
-        },
-        "description": "Ask AI to find quality Bluetooth headphones"
-      }
-    },
-    {
-      "name": "Quick Test - Default",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "http://localhost:3000/api/test",
-          "protocol": "http",
-          "host": ["localhost"],
-          "port": "3000",
-          "path": ["api", "test"]
-        },
-        "description": "Quick test with default query (iPhone 15)"
-      }
-    },
-    {
-      "name": "Quick Test - Custom Query",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "http://localhost:3000/api/test?q=điện thoại xiaomi",
-          "protocol": "http",
-          "host": ["localhost"],
-          "port": "3000",
-          "path": ["api", "test"],
-          "query": [
+      "name": "Expense Forecast",
+      "item": [
+        {
+          "name": "Get Monthly Forecast",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/api/forecast",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "forecast"]
+            },
+            "description": "Get expense forecast for current month using linear regression. Predicts end-of-month spending based on current transaction patterns."
+          },
+          "response": [
             {
-              "key": "q",
-              "value": "điện thoại xiaomi"
+              "name": "Forecast Success - Safe",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "http://localhost:3000/api/forecast",
+                  "protocol": "http",
+                  "host": ["localhost"],
+                  "port": "3000",
+                  "path": ["api", "forecast"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"forecast\": {\n    \"current_date\": 10,\n    \"current_spent\": 2500000,\n    \"predicted_total\": 7500000,\n    \"safety_status\": \"Safe\",\n    \"message\": \"✅ AN TOÀN: Với tốc độ này, cuối tháng bạn sẽ chi 7.5 triệu. Còn dư 2.5 triệu.\",\n    \"chart_data\": [\n      { \"day\": 1, \"amount\": 100000 },\n      { \"day\": 2, \"amount\": 250000 },\n      { \"day\": 3, \"amount\": 400000 },\n      { \"day\": 4, \"amount\": 600000 },\n      { \"day\": 5, \"amount\": 850000 },\n      { \"day\": 6, \"amount\": 1100000 },\n      { \"day\": 7, \"amount\": 1400000 },\n      { \"day\": 8, \"amount\": 1800000 },\n      { \"day\": 9, \"amount\": 2100000 },\n      { \"day\": 10, \"amount\": 2500000 }\n    ],\n    \"budget\": 10000000,\n    \"days_in_month\": 31\n  }\n}"
+            },
+            {
+              "name": "Forecast Success - Warning",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "http://localhost:3000/api/forecast",
+                  "protocol": "http",
+                  "host": ["localhost"],
+                  "port": "3000",
+                  "path": ["api", "forecast"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"forecast\": {\n    \"current_date\": 15,\n    \"current_spent\": 6500000,\n    \"predicted_total\": 8700000,\n    \"safety_status\": \"Warning\",\n    \"message\": \"⚡ CHÚ Ý: Bạn đang chi tiêu nhanh. Dự đoán cuối tháng: 8.7 triệu (87% ngân sách).\",\n    \"chart_data\": [],\n    \"budget\": 10000000,\n    \"days_in_month\": 31\n  }\n}"
+            },
+            {
+              "name": "Forecast Success - Danger",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "http://localhost:3000/api/forecast",
+                  "protocol": "http",
+                  "host": ["localhost"],
+                  "port": "3000",
+                  "path": ["api", "forecast"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"forecast\": {\n    \"current_date\": 20,\n    \"current_spent\": 8000000,\n    \"predicted_total\": 12400000,\n    \"safety_status\": \"Danger\",\n    \"message\": \"⚠️ CẢNH BÁO: Với tốc độ này, cuối tháng bạn sẽ chi tiêu 12.4 triệu, vượt ngân sách 2.4 triệu!\",\n    \"chart_data\": [],\n    \"budget\": 10000000,\n    \"days_in_month\": 31\n  }\n}"
             }
           ]
-        },
-        "description": "Quick test with custom query parameter"
-      }
+        }
+      ],
+      "description": "Expense forecasting using linear regression to predict end-of-month spending"
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "port",
+      "value": "3000",
+      "type": "string"
     }
   ]
 }

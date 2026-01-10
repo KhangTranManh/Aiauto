@@ -1,25 +1,26 @@
 import { Server as HttpServer } from 'http';
 import { Server as SocketIOServer, Socket } from 'socket.io';
 import { config } from '../config';
-import { runAgent } from '../agents/shoppingAgent';
+import { runFinanceAgent } from '../agents/financeAgent';
 
 /**
  * Socket.io service for managing real-time communication
- * Handles client connections, messages, and agent interactions
+ * Handles client connections, messages, and finance agent interactions
  */
 export class SocketService {
   private io: SocketIOServer;
   private connectedClients: Map<string, Socket> = new Map();
 
   constructor(httpServer: HttpServer) {
+    
     // Initialize Socket.io server with CORS
     this.io = new SocketIOServer(httpServer, {
       cors: {
-        origin: config.server.corsOrigins,
+        origin: true, // Allow all origins in development
         methods: ['GET', 'POST'],
         credentials: true,
       },
-      transports: ['websocket', 'polling'], // Support both transports for reliability
+      transports: ['websocket', 'polling'],
     });
 
     this.setupEventHandlers();
@@ -93,14 +94,13 @@ export class SocketService {
         timestamp: new Date().toISOString(),
       });
 
-      // Run the agent with the user query
-      const response = await runAgent(userMessage, socket);
+      // Run the finance agent with the user query
+      const response = await runFinanceAgent(userMessage, socket);
 
       // Emit the final response
       socket.emit('agent_response', {
         success: response.success,
         answer: response.answer,
-        products: response.products,
         error: response.error,
         timestamp: new Date().toISOString(),
       });
@@ -181,7 +181,9 @@ let socketServiceInstance: SocketService | null = null;
 /**
  * Initialize the socket service
  */
-export function initializeSocketService(httpServer: HttpServer): SocketService {
+export function initializeSocketService(
+  httpServer: HttpServer
+): SocketService {
   if (socketServiceInstance) {
     console.warn('⚠️ Socket service already initialized');
     return socketServiceInstance;

@@ -1,42 +1,81 @@
-# 🤖 AI Shopping Agent Backend
+# 💰 Personal Finance AI Agent Backend# 🤖 AI Shopping Agent Backend
 
-A production-ready Node.js backend for an Autonomous AI Shopping Agent targeting the Vietnamese e-commerce market (Shopee, Tiki). Built with TypeScript, Express, Socket.io, and LangChain for intelligent product search and recommendations.
 
-## 🎯 Features
 
-- **🧠 AI-Powered Agent**: Uses LangChain + OpenAI (GPT-4o) for intelligent shopping assistance
-- **🔍 Web Scraping**: Puppeteer-based scraper for Shopee.vn with anti-bot detection
-- **⚡ Real-time Communication**: Socket.io for streaming agent thoughts and results
-- **🌐 Vietnamese Language Support**: Optimized for Vietnamese e-commerce platforms
-- **🛡️ Type Safety**: Full TypeScript with strict mode enabled
-- **📦 Scalable Architecture**: Modular design following best practices
+AI-powered personal finance assistant for Vietnamese users built with Node.js, TypeScript, Google Gemini, and SQLite.A production-ready Node.js backend for an Autonomous AI Shopping Agent targeting the Vietnamese e-commerce market (Shopee, Tiki). Built with TypeScript, Express, Socket.io, and LangChain for intelligent product search and recommendations.
 
-## 📁 Project Structure
 
-```
-ai-agent-backend/
-├── src/
-│   ├── config/               # Environment variables & configuration
-│   │   └── index.ts
+
+## 🎯 Features## 🎯 Features
+
+
+
+- **💳 Expense Tracking**: Record expenses naturally in Vietnamese- **🧠 AI-Powered Agent**: Uses LangChain + OpenAI (GPT-4o) for intelligent shopping assistance
+
+- **📊 Financial Reports**: Monthly spending summaries- **🔍 Web Scraping**: Puppeteer-based scraper for Shopee.vn with anti-bot detection
+
+- **💰 Market Data**: Real-time gold prices & USD/VND rates  - **⚡ Real-time Communication**: Socket.io for streaming agent thoughts and results
+
+- **🧠 AI-Powered**: Google Gemini for natural language understanding- **🌐 Vietnamese Language Support**: Optimized for Vietnamese e-commerce platforms
+
+- **⚡ Real-time**: Socket.io streaming responses- **🛡️ Type Safety**: Full TypeScript with strict mode enabled
+
+- **🗄️ SQLite**: Local database storage- **📦 Scalable Architecture**: Modular design following best practices
+
+
+
+## 🚀 Quick Start## 📁 Project Structure
+
+
+
+```bash```
+
+npm installai-agent-backend/
+
+# Edit .env and add GOOGLE_API_KEY├── src/
+
+npm run dev│   ├── config/               # Environment variables & configuration
+
+```│   │   └── index.ts
+
 │   ├── agents/               # LangChain Agent Logic
-│   │   └── shoppingAgent.ts  # Main AI agent implementation
+
+Server runs on `http://localhost:3000`│   │   └── shoppingAgent.ts  # Main AI agent implementation
+
 │   ├── tools/                # Custom Tools
-│   │   ├── shopeeScraper.ts  # Puppeteer scraping logic
+
+## 💬 Example Usage│   │   ├── shopeeScraper.ts  # Puppeteer scraping logic
+
 │   │   └── currency.ts       # VND currency utilities
-│   ├── services/             # Services
-│   │   └── socketService.ts  # Socket.io connection manager
-│   ├── app.ts                # Express app configuration
+
+- *"Sáng nay ăn phở hết 50k"* → Records expense│   ├── services/             # Services
+
+- *"Tháng này tiêu bao nhiêu?"* → Shows summary│   │   └── socketService.ts  # Socket.io connection manager
+
+- *"Giá vàng SJC hôm nay?"* → Gold prices│   ├── app.ts                # Express app configuration
+
 │   └── server.ts             # Entry point (HTTP + Socket.io)
-├── .env.example              # Environment variables template
+
+## 📊 Tech Stack├── .env.example              # Environment variables template
+
 ├── .gitignore
-├── package.json
-├── tsconfig.json
-└── README.md
-```
+
+- Node.js + TypeScript├── package.json
+
+- Express + Socket.io├── tsconfig.json
+
+- Google Gemini + LangChain└── README.md
+
+- SQLite (better-sqlite3)```
+
+- Puppeteer (market scraping)
 
 ## 🚀 Quick Start
 
-### Prerequisites
+---
+
+Built for Vietnamese personal finance management 🇻🇳### Prerequisites
+
 
 - **Node.js**: v18+ (LTS recommended)
 - **npm**: v9+
