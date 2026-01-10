@@ -146,12 +146,15 @@ class ApiService {
   }
 
   /// Get expense forecast for current month
-  Future<Map<String, dynamic>> getForecast() async {
+  Future<Map<String, dynamic>> getForecast({double? budget}) async {
     try {
+      final uri = budget != null
+          ? Uri.parse('${ApiConfig.baseUrl}/api/forecast')
+              .replace(queryParameters: {'budget': budget.toInt().toString()})
+          : Uri.parse('${ApiConfig.baseUrl}/api/forecast');
+
       final response = await _client
-          .get(
-            Uri.parse('${ApiConfig.baseUrl}/api/forecast'),
-          )
+          .get(uri)
           .timeout(ApiConfig.connectionTimeout);
 
       if (response.statusCode == 200) {

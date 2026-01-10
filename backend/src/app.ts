@@ -1,9 +1,12 @@
 import express, { Application, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import { config } from './config';
-import { Transaction } from './database/db';
+import { Transaction } from './models/Transaction';
 import { scanReceipt } from './services/geminiService';
 import { predictEndOfMonth } from './services/forecastService';
+import authRoutes from './routes/auth';
+import { authenticate, AuthRequest } from './middleware/auth';
+import { User } from './models/User';
 
 /**
  * Create and configure Express application
@@ -27,6 +30,9 @@ export function createApp(): Application {
     console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
     next();
   });
+
+  // Auth routes (public)
+  app.use('/api/auth', authRoutes);
 
   // Health check endpoint
   app.get('/health', (req: Request, res: Response) => {
@@ -53,11 +59,11 @@ export function createApp(): Application {
     });
   });
 
-  // Get recent transactions
-  app.get('/api/transactions/recent', async (req: Request, res: Response) => {
+  // Get recent transactions (protected)
+  app.get('/api/transactions/recent', authenticate, async (req: AuthRequest, res: Response) => {
     try {
       const limit = parseInt(req.query.limit as string) || 10;
-      const transactions = await Transaction.find()
+      const transactions = await Transaction.find({ userId: req.userId })
         .sort({ date: -1 })
         .limit(limit);
 
@@ -75,16 +81,17 @@ export function createApp(): Application {
     }
   });
 
-  // Get transactions by month
-  app.get('/api/transactions/month/:year/:month', async (req: Request, res: Response) => {
+  // Get transactions by month (protected)
+  app.get('/api/transactions/month/:year/:month', authenticate, async (req: AuthRequest, res: Response) => {
     try {
       const { year, month } = req.params;
       const startDate = `${year}-${month.padStart(2, '0')}-01`;
       const endDate = `${year}-${month.padStart(2, '0')}-31`;
 
-      console.log(`📊 Querying transactions: ${startDate} to ${endDate}`);
+      console.log(`📊 Querying transactions for user ${req.userId}: ${startDate} to ${endDate}`);
 
       const transactions = await Transaction.find({
+        userId: req.userId,
         date: { $gte: startDate, $lte: endDate },
       }).sort({ date: -1 });
 
@@ -173,15 +180,18 @@ export function createApp(): Application {
 
   // ==================== EXPENSE FORECAST ENDPOINT ====================
   /**
-   * GET /api/forecast
+   * GET /api/forecast?budget=10000000
    * Predict end-of-month spending using linear regression
    */
-  app.get('/api/forecast', async (_req: Request, res: Response) => {
+  app.get('/api/forecast', async (req: Request, res: Response) => {
     try {
-      console.log('📊 Generating expense forecast...');
+      const budgetParam = req.query.budget as string | undefined;
+      const budget = budgetParam ? parseInt(budgetParam, 10) : undefined;
+      
+      console.log(`📊 Generating expense forecast... (budget: ${budget || 'default'})`);
 
       // Get forecast prediction
-      const forecast = await predictEndOfMonth();
+      const forecast = await predictEndOfMonth('default', budget);
 
       console.log(`✅ Forecast generated: ${forecast.predicted_total} VND (${forecast.safety_status})`);
 

@@ -51,21 +51,43 @@ Hãy trả lời ngắn gọn, thân thiện bằng tiếng Việt.`;
 }
 
 async function initializeModel() {
-  if (config.ai.provider === 'ollama') {
-    console.log(`🤖 Using Ollama: ${config.ai.model} at ${config.ai.ollamaBaseUrl}`);
-    return new ChatOllama({
-      model: config.ai.model,
-      baseUrl: config.ai.ollamaBaseUrl,
-      temperature: config.ai.temperature,
-    });
-  } else {
-    console.log(`🤖 Using Google Gemini: ${config.ai.model}`);
-    return new ChatGoogleGenerativeAI({
-      model: config.ai.model,
-      temperature: config.ai.temperature,
-      apiKey: config.google.apiKey,
-    });
+  // Try Ollama first if configured
+  if (config.ai.provider === 'ollama' || !config.google.apiKey) {
+    try {
+      console.log(`🔄 Trying Ollama: ${config.ai.model} at ${config.ai.ollamaBaseUrl}`);
+      const ollamaModel = new ChatOllama({
+        model: config.ai.model,
+        baseUrl: config.ai.ollamaBaseUrl,
+        temperature: config.ai.temperature,
+      });
+      
+      // Test connection with a simple message
+      await ollamaModel.invoke([new HumanMessage('test')]);
+      console.log(`✅ Connected to Ollama successfully`);
+      return ollamaModel;
+    } catch (error) {
+      console.warn(`⚠️ Ollama not available:`, error instanceof Error ? error.message : 'Unknown error');
+      
+      // Fall back to Google Gemini if API key is available
+      if (config.google.apiKey) {
+        console.log(`🔄 Falling back to Google Gemini...`);
+      } else {
+        throw new Error('Ollama is not available and no Google API key configured. Please start Ollama or add GOOGLE_API_KEY to .env');
+      }
+    }
   }
+  
+  // Use Google Gemini
+  if (!config.google.apiKey) {
+    throw new Error('Google API key not configured. Please add GOOGLE_API_KEY to .env');
+  }
+  
+  console.log(`🤖 Using Google Gemini: ${config.google.model}`);
+  return new ChatGoogleGenerativeAI({
+    model: config.google.model,
+    temperature: config.ai.temperature,
+    apiKey: config.google.apiKey,
+  });
 }
 
 async function handleToolCall(toolName: string, args: any): Promise<string> {
@@ -94,10 +116,12 @@ async function handleToolCall(toolName: string, args: any): Promise<string> {
 
 export async function runFinanceAgent(
   userQuery: string,
-  socket: Socket
+  socket: Socket,
+  chatHistory: (HumanMessage | AIMessage)[] = []
 ): Promise<AgentResponse> {
   try {
     console.log(`\n📨 User Query: "${userQuery}"`);
+    console.log(`📚 Chat history: ${chatHistory.length} messages`);
 
     socket.emit('agent_status', {
       status: 'thinking',
@@ -120,13 +144,22 @@ export async function runFinanceAgent(
     // Bind tools to model
     const modelWithTools = model.bindTools(tools);
     
+    // Build messages array with system prompt, chat history, and new user message
     const messages: (SystemMessage | HumanMessage | AIMessage | ToolMessage)[] = [
       new SystemMessage(getSystemPrompt()),
+      ...chatHistory, // Include previous conversation
       new HumanMessage(userQuery),
     ];
 
     // First model call
     let response = await modelWithTools.invoke(messages);
+    
+    console.log('🔍 Response type:', typeof response);
+    console.log('🔍 Has tool_calls:', !!response.tool_calls);
+    console.log('🔍 Tool calls length:', response.tool_calls?.length || 0);
+    if (response.tool_calls && response.tool_calls.length > 0) {
+      console.log('🔍 Tool calls:', JSON.stringify(response.tool_calls, null, 2));
+    }
     
     // Handle tool calls if any
     if (response.tool_calls && response.tool_calls.length > 0) {

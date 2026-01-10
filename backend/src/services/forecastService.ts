@@ -1,5 +1,5 @@
 import { linearRegression, linearRegressionLine } from 'simple-statistics';
-import { Transaction } from '../database/db';
+import { Transaction } from '../models/Transaction';
 
 interface DailySpending {
   day: number;
@@ -19,8 +19,13 @@ interface ForecastResult {
 
 /**
  * Predict end-of-month spending using linear regression
+ * @param _userId User ID (for future multi-user support)
+ * @param customBudget Optional custom budget (defaults to 10 million VND)
  */
-export async function predictEndOfMonth(_userId: string = 'default'): Promise<ForecastResult> {
+export async function predictEndOfMonth(
+  _userId: string = 'default',
+  customBudget?: number
+): Promise<ForecastResult> {
   // Step A: Get current month transactions
   const now = new Date();
   const year = now.getFullYear();
@@ -46,6 +51,8 @@ export async function predictEndOfMonth(_userId: string = 'default'): Promise<Fo
 
   console.log(`📦 Found ${transactions.length} transactions`);
 
+  const budget = customBudget || 10000000; // Use custom budget or default to 10 million VND
+
   if (transactions.length === 0) {
     // No data yet, return default forecast
     return {
@@ -55,7 +62,7 @@ export async function predictEndOfMonth(_userId: string = 'default'): Promise<Fo
       safety_status: 'Safe',
       message: 'Chưa có giao dịch nào trong tháng này.',
       chart_data: [],
-      budget: 10000000, // 10 million VND default budget
+      budget,
       days_in_month: daysInMonth,
     };
   }
@@ -109,7 +116,6 @@ export async function predictEndOfMonth(_userId: string = 'default'): Promise<Fo
   predictedTotal = Math.max(predictedTotal, cumulativeAmount);
 
   // Step E: Compare with budget and generate warning
-  const budget = 10000000; // 10 million VND
   const percentOfBudget = (predictedTotal / budget) * 100;
   
   let safetyStatus: 'Safe' | 'Warning' | 'Danger';

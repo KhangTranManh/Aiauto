@@ -2,6 +2,7 @@ import { Server as HttpServer } from 'http';
 import { Server as SocketIOServer, Socket } from 'socket.io';
 import { config } from '../config';
 import { runFinanceAgent } from '../agents/financeAgent';
+import { HumanMessage, AIMessage } from '@langchain/core/messages';
 
 /**
  * Socket.io service for managing real-time communication
@@ -10,6 +11,7 @@ import { runFinanceAgent } from '../agents/financeAgent';
 export class SocketService {
   private io: SocketIOServer;
   private connectedClients: Map<string, Socket> = new Map();
+  private chatHistories: Map<string, (HumanMessage | AIMessage)[]> = new Map();
 
   constructor(httpServer: HttpServer) {
     
@@ -33,6 +35,7 @@ export class SocketService {
     this.io.on('connection', (socket: Socket) => {
       console.log(`✅ Client connected: ${socket.id}`);
       this.connectedClients.set(socket.id, socket);
+      this.chatHistories.set(socket.id, []); // Initialize empty chat history
 
       // Send welcome message
       socket.emit('connected', {
@@ -46,10 +49,21 @@ export class SocketService {
         await this.handleUserMessage(socket, data);
       });
 
+      // Handle clear history request
+      socket.on('clear_history', () => {
+        this.chatHistories.set(socket.id, []);
+        console.log(`🗑️ Chat history cleared for ${socket.id}`);
+        socket.emit('history_cleared', {
+          message: 'Lịch sử hội thoại đã được xóa',
+          timestamp: new Date().toISOString(),
+        });
+      });
+
       // Handle disconnection
       socket.on('disconnect', () => {
         console.log(`❌ Client disconnected: ${socket.id}`);
         this.connectedClients.delete(socket.id);
+        this.chatHistories.delete(socket.id); // Clear chat history on disconnect
       });
 
       // Handle errors
@@ -94,8 +108,25 @@ export class SocketService {
         timestamp: new Date().toISOString(),
       });
 
-      // Run the finance agent with the user query
-      const response = await runFinanceAgent(userMessage, socket);
+      // Get chat history for this socket
+      const chatHistory = this.chatHistories.get(socket.id) || [];
+
+      // Run the finance agent with the user query and chat history
+      const response = await runFinanceAgent(userMessage, socket, chatHistory);
+
+      // Update chat history with user message and AI response
+      if (response.success && response.answer) {
+        chatHistory.push(new HumanMessage(userMessage));
+        chatHistory.push(new AIMessage(response.answer));
+        
+        // Keep only last 10 exchanges (20 messages) to avoid context overflow
+        if (chatHistory.length > 20) {
+          chatHistory.splice(0, chatHistory.length - 20);
+        }
+        
+        this.chatHistories.set(socket.id, chatHistory);
+        console.log(`💾 Chat history updated. Total messages: ${chatHistory.length}`);
+      }
 
       // Emit the final response
       socket.emit('agent_response', {

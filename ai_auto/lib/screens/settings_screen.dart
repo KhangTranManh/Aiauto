@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/transaction_provider.dart';
 
 /// Settings Screen - Configure app settings
@@ -13,11 +15,90 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _isLoading = false;
   Map<String, dynamic>? _serverStatus;
+  final TextEditingController _budgetController = TextEditingController();
+  double _monthlyBudget = 10000000; // Default 10 million VND
 
   @override
   void initState() {
     super.initState();
-    _checkServerStatus();
+    _loadBudget();
+    // Delay server status check until after the first frame to avoid setState during build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkServerStatus();
+    });
+  }
+
+  Future<void> _loadBudget() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _monthlyBudget = prefs.getDouble('monthly_budget') ?? 10000000;
+      _budgetController.text = _monthlyBudget.toInt().toString();
+    });
+  }
+
+  Future<void> _saveBudget(double budget) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble('monthly_budget', budget);
+    setState(() {
+      _monthlyBudget = budget;
+    });
+    _showSnackBar('✅ Đã lưu ngân sách: ${_formatCurrency(budget)}', Colors.green);
+  }
+
+  String _formatCurrency(double amount) {
+    return '${(amount / 1000000).toStringAsFixed(1)} triệu đ';
+  }
+
+  void _showBudgetDialog() {
+    _budgetController.text = _monthlyBudget.toInt().toString();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Đặt ngân sách tháng'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Nhập ngân sách chi tiêu hàng tháng của bạn:',
+              style: TextStyle(fontSize: 14),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _budgetController,
+              keyboardType: TextInputType.number,
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+              ],
+              decoration: const InputDecoration(
+                labelText: 'Ngân sách (VND)',
+                prefixIcon: Icon(Icons.attach_money),
+                border: OutlineInputBorder(),
+                helperText: 'Ví dụ: 10000000 = 10 triệu đ',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Hủy'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final budget = double.tryParse(_budgetController.text);
+              if (budget != null && budget > 0) {
+                _saveBudget(budget);
+                Navigator.pop(context);
+              } else {
+                _showError('Vui lòng nhập số tiền hợp lệ');
+              }
+            },
+            child: const Text('Lưu'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _checkServerStatus() async {
@@ -192,6 +273,86 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       label: const Text('Kiểm tra kết nối'),
                     ),
                   ],
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Budget Configuration
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.account_balance_wallet,
+                        color: Theme.of(context).primaryColor,
+                        size: 28,
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Text(
+                          'Ngân sách tháng',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Ngân sách hiện tại',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              _formatCurrency(_monthlyBudget),
+                              style: const TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.blue,
+                              ),
+                            ),
+                          ],
+                        ),
+                        IconButton(
+                          onPressed: _showBudgetDialog,
+                          icon: const Icon(Icons.edit, color: Colors.blue),
+                          tooltip: 'Thay đổi ngân sách',
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Dùng để dự đoán và cảnh báo chi tiêu',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -405,5 +566,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ],
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _budgetController.dispose();
+    super.dispose();
   }
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/transaction_provider.dart';
 import '../models/transaction_model.dart';
 import '../services/api_service.dart';
@@ -21,6 +22,7 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
   final ApiService _apiService = ApiService();
   Map<String, dynamic>? _forecast;
   bool _isForecastLoading = false;
+  double _monthlyBudget = 10000000; // Default
 
   @override
   void initState() {
@@ -28,6 +30,14 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
     final now = DateTime.now();
     _selectedYear = now.year;
     _selectedMonth = now.month;
+    _loadBudget();
+  }
+
+  Future<void> _loadBudget() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _monthlyBudget = prefs.getDouble('monthly_budget') ?? 10000000;
+    });
   }
 
   @override
@@ -64,7 +74,7 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
     });
 
     try {
-      final forecast = await _apiService.getForecast();
+      final forecast = await _apiService.getForecast(budget: _monthlyBudget);
       setState(() {
         _forecast = forecast;
         _isForecastLoading = false;

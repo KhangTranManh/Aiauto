@@ -1,6 +1,6 @@
 import { DynamicStructuredTool } from '@langchain/core/tools';
 import { z } from 'zod';
-import { Transaction, ITransaction } from '../database/db';
+import { Transaction, ITransaction } from '../models/Transaction';
 
 /**
  * Add expense tool
@@ -13,7 +13,7 @@ export function createAddExpenseTool() {
       'Use when user mentions spending money. ' +
       'Examples: "Sáng nay ăn phở hết 50k", "Mua cafe 30 nghìn".',
     schema: z.object({
-      amount: z.number().positive().describe('Amount in VND. "50k" = 50000, "30 nghìn" = 30000'),
+      amount: z.number().gte(1).describe('Amount in VND. "50k" = 50000, "30 nghìn" = 30000'),
       category: z.string().describe('Category: Food, Transport, Shopping, Entertainment, Bills, Health, Other'),
       note: z.string().optional().describe('Additional note'),
       date: z.string().describe('Date in YYYY-MM-DD format'),
@@ -54,8 +54,8 @@ export function createGetMonthlyExpensesTool() {
       'Gets expense summary for a specific month. ' +
       'Use when user asks: "Tháng này tiêu bao nhiêu?", "Chi tiêu tháng 10".',
     schema: z.object({
-      year: z.number().int().min(2020).max(2030).describe('Year (e.g., 2026)'),
-      month: z.number().int().min(1).max(12).describe('Month (1-12)'),
+      year: z.number().int().gte(2020).max(2030).describe('Year (e.g., 2026)'),
+      month: z.number().int().gte(1).max(12).describe('Month (1-12)'),
     }),
     func: async ({ year, month }) => {
       console.log(`📊 Getting expenses for ${month}/${year}`);
@@ -115,7 +115,7 @@ export function createGetExpenseStatsTool() {
       'Use when user asks: "Phân tích chi tiêu", "Tôi tiêu nhiều nhất vào gì?".',
     schema: z.object({
       year: z.number().int().describe('Year to analyze'),
-      month: z.number().int().min(1).max(12).describe('Month to analyze'),
+      month: z.number().int().gte(1).max(12).describe('Month to analyze'),
     }),
     func: async ({ year, month }) => {
       console.log(`📈 Getting statistics for ${month}/${year}`);
@@ -185,7 +185,7 @@ export function createDeleteExpenseTool() {
     schema: z.object({
       category: z.string().optional().describe('Delete by category (Food, Transport, etc.). Leave empty to delete recent.'),
       deleteAll: z.boolean().optional().describe('Set true to delete ALL transactions. Use carefully!'),
-      limit: z.number().int().positive().optional().default(1).describe('Number of transactions to delete (default: 1, most recent)'),
+      limit: z.number().int().gte(1).optional().default(1).describe('Number of transactions to delete (default: 1, most recent)'),
     }),
     func: async ({ category, deleteAll, limit = 1 }) => {
       console.log(`🗑️ Delete request - category: ${category}, deleteAll: ${deleteAll}, limit: ${limit}`);

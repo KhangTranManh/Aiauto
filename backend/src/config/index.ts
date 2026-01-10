@@ -21,6 +21,7 @@ interface Config {
   };
   google: {
     apiKey: string;
+    model: string;
   };
   puppeteer: {
     headless: boolean;
@@ -78,6 +79,7 @@ export const config: Config = {
   },
   google: {
     apiKey: process.env.GOOGLE_API_KEY || '',
+    model: process.env.GOOGLE_MODEL || 'gemini-1.5-flash',
   },
   puppeteer: {
     headless: process.env.PUPPETEER_HEADLESS === 'true',

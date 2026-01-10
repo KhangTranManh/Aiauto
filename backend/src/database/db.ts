@@ -1,59 +1,6 @@
 import mongoose from 'mongoose';
 
 /**
- * Transaction interface
- */
-export interface ITransaction {
-  amount: number;
-  category: string;
-  note: string;
-  date: string;
-  merchant?: string;
-  rawText?: string;
-  createdAt?: Date;
-}
-
-/**
- * Transaction Schema
- */
-const transactionSchema = new mongoose.Schema<ITransaction>({
-  amount: {
-    type: Number,
-    required: true,
-  },
-  category: {
-    type: String,
-    required: true,
-  },
-  note: {
-    type: String,
-    default: '',
-  },
-  date: {
-    type: String,
-    required: true,
-  },
-  merchant: {
-    type: String,
-    default: '',
-  },
-  rawText: {
-    type: String,
-    default: '',
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
-});
-
-transactionSchema.index({ date: 1 });
-transactionSchema.index({ category: 1 });
-transactionSchema.index({ merchant: 1 });
-
-export const Transaction = mongoose.model<ITransaction>('Transaction', transactionSchema);
-
-/**
  * Connect to MongoDB
  */
 export async function connectDatabase(mongoUri?: string): Promise<void> {
