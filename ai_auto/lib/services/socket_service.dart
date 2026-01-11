@@ -1,11 +1,13 @@
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'package:logger/logger.dart';
 import '../config/api_config.dart';
+import 'auth_service.dart';
 
 /// Socket.IO Service for real-time communication
 class SocketService {
   IO.Socket? _socket;
   final Logger _logger = Logger();
+  final AuthService _authService = AuthService();
   bool _isConnected = false;
 
   // Callbacks
@@ -19,16 +21,27 @@ class SocketService {
   bool get isConnected => _isConnected;
 
   /// Connect to Socket.IO server
-  void connect() {
+  Future<void> connect() async {
     try {
       _logger.i('Connecting to Socket.IO server: ${ApiConfig.socketUrl}');
+
+      // Get user data to extract userId
+      final userData = await _authService.getUserData();
+      final userId = userData?['_id'] ?? 'default';
+      
+      _logger.i('📱 User data from storage: $userData');
+      _logger.i('👤 Extracted userId: $userId');
 
       _socket = IO.io(
         ApiConfig.socketUrl,
         IO.OptionBuilder()
             .setTransports(['websocket', 'polling'])
+            .setQuery({'userId': userId}) // Pass userId in handshake
             .disableAutoConnect()
             .enableForceNew()
+            .enableReconnection() // Enable auto-reconnection
+            .setReconnectionDelay(2000) // Wait 2 seconds between reconnection attempts
+            .setReconnectionAttempts(5) // Try to reconnect 5 times
             .build(),
       );
 
@@ -36,7 +49,8 @@ class SocketService {
       _socket!.connect();
     } catch (e) {
       _logger.e('Socket connection error: $e');
-      onError?.call('Connection failed: $e');
+      // Don't expose technical error to user - just call disconnect handler
+      onDisconnected?.call();
     }
   }
 
@@ -89,13 +103,15 @@ class SocketService {
 
     _socket!.onConnectError((data) {
       _isConnected = false;
-      _logger.e('Connection error: $data');
-      onError?.call('Connection error: $data');
+      _logger.e('Connection error: $data'); // Log technical details for debugging
+      // Don't expose technical details to user - just silently handle it
+      onDisconnected?.call();
     });
 
     _socket!.onError((data) {
-      _logger.e('Socket error: $data');
-      onError?.call('Socket error: $data');
+      _logger.e('Socket error: $data'); // Log technical details for debugging
+      // Don't expose technical details to user - just silently handle it
+      onDisconnected?.call();
     });
   }
 

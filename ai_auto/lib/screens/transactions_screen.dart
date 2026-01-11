@@ -15,20 +15,16 @@ class TransactionsScreen extends StatefulWidget {
 class _TransactionsScreenState extends State<TransactionsScreen> {
   int _selectedLimit = 10;
   final List<int> _limits = [10, 20, 50, 100];
-  bool _hasLoaded = false;
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // Only fetch data once when screen is first built
-    if (!_hasLoaded) {
-      _hasLoaded = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        context.read<TransactionProvider>().fetchRecentTransactions(
-              limit: _selectedLimit,
-            );
-      });
-    }
+  void initState() {
+    super.initState();
+    // Fetch initial data
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<TransactionProvider>().fetchRecentTransactions(
+            limit: _selectedLimit,
+          );
+    });
   }
 
   @override

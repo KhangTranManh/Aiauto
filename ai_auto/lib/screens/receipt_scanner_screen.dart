@@ -8,6 +8,7 @@ import 'dart:convert';
 import 'package:provider/provider.dart';
 import '../config/api_config.dart';
 import '../providers/transaction_provider.dart';
+import '../services/auth_service.dart';
 
 class ReceiptScannerScreen extends StatefulWidget {
   const ReceiptScannerScreen({super.key});
@@ -139,9 +140,7 @@ class _ReceiptScannerScreenState extends State<ReceiptScannerScreen> {
 
       if (_extractedText.isNotEmpty) {
         _showSnackBar('Đã trích xuất ${_extractedText.length} ký tự từ hóa đơn', Colors.green);
-        
-        // Debug: Show what was extracted
-        print('📄 Extracted text preview:\n${_extractedText.substring(0, _extractedText.length > 200 ? 200 : _extractedText.length)}');
+        // Note: Receipt text NOT logged for privacy/security
       } else {
         _showSnackBar('Không tìm thấy text trong ảnh', Colors.orange);
       }
@@ -166,10 +165,17 @@ class _ReceiptScannerScreenState extends State<ReceiptScannerScreen> {
     });
 
     try {
+      // Get auth token
+      final authService = AuthService();
+      final token = await authService.getToken();
+      
       final url = Uri.parse('${ApiConfig.baseUrl}/api/scan-receipt');
       final response = await http.post(
         url,
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
         body: json.encode({'receiptText': _extractedText}),
       );
 
@@ -194,16 +200,18 @@ class _ReceiptScannerScreenState extends State<ReceiptScannerScreen> {
           
           _showSnackBar('✅ Đã lưu giao dịch thành công!', Colors.green);
         } else {
-          _showError('Lỗi: ${data['error'] ?? 'Unknown error'}');
+          _showError('Không thể xử lý hóa đơn. Vui lòng thử lại.');
         }
+      } else if (response.statusCode == 401) {
+        _showError('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.');
       } else {
-        _showError('Lỗi kết nối: ${response.statusCode}');
+        _showError('Không thể kết nối. Vui lòng thử lại.');
       }
     } catch (e) {
       setState(() {
         _isUploading = false;
       });
-      _showError('Lỗi khi gửi dữ liệu: $e');
+      _showError('Đã xảy ra lỗi. Vui lòng thử lại.');
     }
   }
 

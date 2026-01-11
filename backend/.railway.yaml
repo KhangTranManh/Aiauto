@@ -1,0 +1,22 @@
+# Railway Deployment Configuration
+# This file tells Railway how to deploy your backend
+
+build:
+  command: npm install && npm run build
+
+start:
+  command: npm start
+
+# Health check endpoint
+healthcheck:
+  path: /health
+  interval: 30s
+  timeout: 10s
+
+# Environment variables (set these in Railway dashboard)
+# - NODE_ENV=production
+# - MONGODB_URI=<your-mongodb-connection-string>
+# - JWT_SECRET=<your-secret-key>
+# - PORT=3000
+# - AI_PROVIDER=ollama (or google)
+# - GOOGLE_API_KEY=<if-using-gemini>

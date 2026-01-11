@@ -41,10 +41,14 @@ class AuthService {
         await _storage.write(key: _userKey, value: json.encode(data['user']));
         return data;
       } else {
-        throw Exception(data['error'] ?? 'Registration failed');
+        // Don't expose backend error messages
+        throw Exception('Đăng ký thất bại. Vui lòng kiểm tra thông tin.');
       }
     } catch (e) {
-      throw Exception('Registration failed: $e');
+      if (e.toString().contains('email')) {
+        throw Exception('Email đã được sử dụng.');
+      }
+      throw Exception('Đăng ký thất bại. Vui lòng thử lại.');
     }
   }
 
@@ -73,10 +77,14 @@ class AuthService {
         await _storage.write(key: _userKey, value: json.encode(data['user']));
         return data;
       } else {
-        throw Exception(data['error'] ?? 'Login failed');
+        // Don't expose backend error messages
+        throw Exception('Email hoặc mật khẩu không đúng.');
       }
     } catch (e) {
-      throw Exception('Login failed: $e');
+      if (e.toString().contains('Email hoặc mật khẩu')) {
+        rethrow;
+      }
+      throw Exception('Đăng nhập thất bại. Kiểm tra kết nối mạng.');
     }
   }
 

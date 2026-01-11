@@ -129,8 +129,9 @@ export function createApp(): Application {
    * POST /api/scan-receipt
    * Submit receipt text and extract transaction data using local AI
    */
-  app.post('/api/scan-receipt', async (req: Request, res: Response) => {
+  app.post('/api/scan-receipt', authenticate, async (req: AuthRequest, res: Response) => {
     try {
+      console.log('📱 Scan receipt request from user:', req.userId);
       const { receiptText } = req.body;
 
       if (!receiptText || typeof receiptText !== 'string') {
@@ -140,13 +141,14 @@ export function createApp(): Application {
         });
       }
 
-      console.log(`� Processing receipt text (${receiptText.length} chars)...`);
+      console.log(`📄 Processing receipt text (${receiptText.length} chars)...`);
 
       // Scan the receipt using local Ollama AI
       const receiptData = await scanReceipt(receiptText);
 
-      // Save to MongoDB
+      // Save to MongoDB with userId from authenticated request
       const transaction = await Transaction.create({
+        userId: req.userId,
         amount: receiptData.amount,
         category: receiptData.category,
         merchant: receiptData.merchant,
@@ -183,7 +185,7 @@ export function createApp(): Application {
    * GET /api/forecast?budget=10000000
    * Predict end-of-month spending using linear regression
    */
-  app.get('/api/forecast', async (req: Request, res: Response) => {
+  app.get('/api/forecast', authenticate, async (req: AuthRequest, res: Response) => {
     try {
       const budgetParam = req.query.budget as string | undefined;
       const budget = budgetParam ? parseInt(budgetParam, 10) : undefined;

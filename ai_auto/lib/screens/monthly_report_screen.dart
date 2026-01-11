@@ -18,7 +18,6 @@ class MonthlyReportScreen extends StatefulWidget {
 class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
   late int _selectedYear;
   late int _selectedMonth;
-  bool _hasLoaded = false;
   final ApiService _apiService = ApiService();
   Map<String, dynamic>? _forecast;
   bool _isForecastLoading = false;
@@ -31,6 +30,11 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
     _selectedYear = now.year;
     _selectedMonth = now.month;
     _loadBudget();
+    
+    // Fetch initial data
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _fetchData();
+    });
   }
 
   Future<void> _loadBudget() async {
@@ -38,18 +42,6 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
     setState(() {
       _monthlyBudget = prefs.getDouble('monthly_budget') ?? 10000000;
     });
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // Only fetch data once when screen is first built
-    if (!_hasLoaded) {
-      _hasLoaded = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _fetchData();
-      });
-    }
   }
 
   void _fetchData() {
@@ -315,9 +307,10 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
                       ),
                       Text(
                         '$percentComplete%',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
+                          color: const Color.fromARGB(255, 10, 1, 1),
                         ),
                       ),
                     ],

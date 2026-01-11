@@ -33,7 +33,10 @@ export class SocketService {
    */
   private setupEventHandlers(): void {
     this.io.on('connection', (socket: Socket) => {
-      console.log(`✅ Client connected: ${socket.id}`);
+      // Extract userId from handshake query (sent from Flutter)
+      const userId = (socket.handshake.query.userId as string) || 'default';
+      
+      console.log(`✅ Client connected: ${socket.id} (User: ${userId})`);
       this.connectedClients.set(socket.id, socket);
       this.chatHistories.set(socket.id, []); // Initialize empty chat history
 
@@ -41,12 +44,13 @@ export class SocketService {
       socket.emit('connected', {
         message: 'Kết nối thành công với AI Shopping Agent!',
         socketId: socket.id,
+        userId: userId,
         timestamp: new Date().toISOString(),
       });
 
       // Handle user messages
       socket.on('user_message', async (data: { message: string }) => {
-        await this.handleUserMessage(socket, data);
+        await this.handleUserMessage(socket, data, userId);
       });
 
       // Handle clear history request
@@ -88,7 +92,8 @@ export class SocketService {
    */
   private async handleUserMessage(
     socket: Socket,
-    data: { message: string }
+    data: { message: string },
+    userId: string
   ): Promise<void> {
     try {
       const userMessage = data.message?.trim();
@@ -100,7 +105,7 @@ export class SocketService {
         return;
       }
 
-      console.log(`📨 Message from ${socket.id}: "${userMessage}"`);
+      console.log(`📨 Message from ${socket.id} (User: ${userId}): "${userMessage}"`);
 
       // Emit acknowledgment
       socket.emit('message_received', {
@@ -111,8 +116,8 @@ export class SocketService {
       // Get chat history for this socket
       const chatHistory = this.chatHistories.get(socket.id) || [];
 
-      // Run the finance agent with the user query and chat history
-      const response = await runFinanceAgent(userMessage, socket, chatHistory);
+      // Run the finance agent with the user query, chat history, and userId
+      const response = await runFinanceAgent(userMessage, socket, chatHistory, userId);
 
       // Update chat history with user message and AI response
       if (response.success && response.answer) {

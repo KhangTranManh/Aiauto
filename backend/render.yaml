@@ -1,0 +1,48 @@
+# Render.com Deployment Configuration
+# This file tells Render how to build and deploy your backend
+
+services:
+  - type: web
+    name: ai-expense-tracker-backend
+    env: node
+    region: singapore  # Choose closest to your users
+    plan: free  # 👈 FREE TIER
+    
+    # Build settings
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    
+    # Health check
+    healthCheckPath: /health
+    
+    # Auto-deploy from GitHub
+    autoDeploy: true
+    
+    # Environment variables (set these in Render dashboard)
+    envVars:
+      - key: NODE_ENV
+        value: production
+      
+      - key: PORT
+        value: 3000
+      
+      - key: MONGODB_URI
+        sync: false  # Set manually in Render dashboard
+      
+      - key: JWT_SECRET
+        generateValue: true  # Render auto-generates secure secret
+      
+      - key: AI_PROVIDER
+        value: google  # Use Google Gemini (free tier)
+      
+      - key: GOOGLE_API_KEY
+        sync: false  # Set manually in Render dashboard
+      
+      - key: CORS_ORIGINS
+        value: https://your-flutter-app-url.com
+
+# Note: Free tier limitations
+# - Sleeps after 15 min inactivity
+# - 512MB RAM
+# - Shared CPU
+# - 750 hours/month (enough for 1 service)

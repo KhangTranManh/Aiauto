@@ -47,7 +47,13 @@ Bạn có các công cụ sau:
 6. get_usd_rate - Xem tỷ giá USD
 7. get_market_info - Thông tin thị trường tổng hợp
 
-Hãy trả lời ngắn gọn, thân thiện bằng tiếng Việt.`;
+QUAN TRỌNG: Trả lời NGẮN GỌN, CHỈ 1-2 CÂU. Không giải thích dài dòng.
+Ví dụ:
+- "✅ Đã lưu chi tiêu 50.000đ cho Food"
+- "📊 Tháng này bạn chi 2.5 triệu đồng"
+- "💰 Bitcoin hiện tại: $65,000"
+
+Hãy thân thiện nhưng ngắn gọn bằng tiếng Việt.`;
 }
 
 async function initializeModel() {
@@ -90,9 +96,9 @@ async function initializeModel() {
   });
 }
 
-async function handleToolCall(toolName: string, args: any): Promise<string> {
+async function handleToolCall(toolName: string, args: any, userId?: string): Promise<string> {
   const tools: { [key: string]: any } = {
-    add_expense: createAddExpenseTool(),
+    add_expense: createAddExpenseTool(userId),
     get_monthly_expenses: createGetMonthlyExpensesTool(),
     get_expense_stats: createGetExpenseStatsTool(),
     delete_expense: createDeleteExpenseTool(),
@@ -117,11 +123,13 @@ async function handleToolCall(toolName: string, args: any): Promise<string> {
 export async function runFinanceAgent(
   userQuery: string,
   socket: Socket,
-  chatHistory: (HumanMessage | AIMessage)[] = []
+  chatHistory: (HumanMessage | AIMessage)[] = [],
+  userId?: string
 ): Promise<AgentResponse> {
   try {
     console.log(`\n📨 User Query: "${userQuery}"`);
     console.log(`📚 Chat history: ${chatHistory.length} messages`);
+    console.log(`👤 User ID: ${userId || 'default'}`);
 
     socket.emit('agent_status', {
       status: 'thinking',
@@ -130,12 +138,12 @@ export async function runFinanceAgent(
 
     const model = await initializeModel();
     
-    // Create all tools
+    // Create all tools with userId
     const tools = [
-      createAddExpenseTool(),
-      createGetMonthlyExpensesTool(),
-      createGetExpenseStatsTool(),
-      createDeleteExpenseTool(),
+      createAddExpenseTool(userId),
+      createGetMonthlyExpensesTool(userId),
+      createGetExpenseStatsTool(userId),
+      createDeleteExpenseTool(userId),
       createBtcPriceTool(),
       createUsdRateTool(),
       createMarketInfoTool(),
@@ -167,7 +175,7 @@ export async function runFinanceAgent(
       
       for (const toolCall of response.tool_calls) {
         console.log(`  → Calling: ${toolCall.name}`);
-        const toolResult = await handleToolCall(toolCall.name, toolCall.args);
+        const toolResult = await handleToolCall(toolCall.name, toolCall.args, userId);
         console.log(`  ✓ Result: ${toolResult}`);
         
         // Add AI response and tool result to messages

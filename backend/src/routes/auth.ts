@@ -44,7 +44,8 @@ router.post('/register', async (req: Request, res: Response) => {
       success: true,
       token,
       user: {
-        id: user._id,
+        _id: user._id,  // Use _id instead of id for consistency
+        id: user._id,   // Keep id for backward compatibility
         email: user.email,
         name: user.name,
         monthlyBudget: user.monthlyBudget,
@@ -100,7 +101,8 @@ router.post('/login', async (req: Request, res: Response) => {
       success: true,
       token,
       user: {
-        id: user._id,
+        _id: user._id,  // Use _id instead of id for consistency
+        id: user._id,   // Keep id for backward compatibility
         email: user.email,
         name: user.name,
         monthlyBudget: user.monthlyBudget,
@@ -133,7 +135,8 @@ router.get('/me', authenticate, async (req: AuthRequest, res: Response) => {
     return res.json({
       success: true,
       user: {
-        id: user._id,
+        _id: user._id,  // Use _id instead of id for consistency
+        id: user._id,   // Keep id for backward compatibility
         email: user.email,
         name: user.name,
         monthlyBudget: user.monthlyBudget,
@@ -179,7 +182,8 @@ router.put('/budget', authenticate, async (req: AuthRequest, res: Response) => {
     return res.json({
       success: true,
       user: {
-        id: user._id,
+        _id: user._id,  // Use _id instead of id for consistency
+        id: user._id,   // Keep id for backward compatibility
         email: user.email,
         name: user.name,
         monthlyBudget: user.monthlyBudget,

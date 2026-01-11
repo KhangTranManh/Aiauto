@@ -18,7 +18,13 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => TransactionProvider()),
-        ChangeNotifierProvider(create: (_) => ChatProvider()),
+        ChangeNotifierProxyProvider<TransactionProvider, ChatProvider>(
+          create: (context) => ChatProvider(
+            transactionProvider: context.read<TransactionProvider>(),
+          ),
+          update: (context, transactionProvider, chatProvider) => 
+            chatProvider ?? ChatProvider(transactionProvider: transactionProvider),
+        ),
       ],
       child: MaterialApp(
         title: 'Trợ lý tài chính AI',

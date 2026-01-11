@@ -19,11 +19,11 @@ interface ForecastResult {
 
 /**
  * Predict end-of-month spending using linear regression
- * @param _userId User ID (for future multi-user support)
+ * @param userId User ID to filter transactions
  * @param customBudget Optional custom budget (defaults to 10 million VND)
  */
 export async function predictEndOfMonth(
-  _userId: string = 'default',
+  userId: string = 'default',
   customBudget?: number
 ): Promise<ForecastResult> {
   // Step A: Get current month transactions
@@ -36,13 +36,14 @@ export async function predictEndOfMonth(
   const endDate = new Date(year, month + 1, 0); // Last day of month
   const daysInMonth = endDate.getDate();
 
-  console.log(`📊 Forecasting for month ${month + 1}/${year} (Days: ${daysInMonth})`);
+  console.log(`📊 Forecasting for month ${month + 1}/${year} (Days: ${daysInMonth}) - userId: ${userId}`);
 
   // Query transactions for current month (date is stored as ISO string)
   const startDateStr = startDate.toISOString();
   const endDateStr = new Date(year, month, currentDay, 23, 59, 59).toISOString();
 
   const transactions = await Transaction.find({
+    userId: userId,
     date: {
       $gte: startDateStr,
       $lte: endDateStr,

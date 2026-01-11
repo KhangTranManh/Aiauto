@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import '../services/socket_service.dart';
+import 'transaction_provider.dart';
 
 /// Chat Message Model
 class ChatMessage {
@@ -19,14 +20,18 @@ class ChatMessage {
 /// Provider for managing chat state
 class ChatProvider with ChangeNotifier {
   final SocketService _socketService;
+  final TransactionProvider? _transactionProvider;
   
   List<ChatMessage> _messages = [];
   bool _isConnected = false;
   bool _isProcessing = false;
   String? _error;
 
-  ChatProvider({SocketService? socketService})
-      : _socketService = socketService ?? SocketService() {
+  ChatProvider({
+    SocketService? socketService,
+    TransactionProvider? transactionProvider,
+  })  : _socketService = socketService ?? SocketService(),
+        _transactionProvider = transactionProvider {
     _setupSocketCallbacks();
   }
 
@@ -65,19 +70,33 @@ class ChatProvider with ChangeNotifier {
     _socketService.onAgentResponse = (response) {
       _isProcessing = false;
       final answer = response['answer'] ?? 'No response';
+      final success = response['success'] ?? false;
+      
       _addMessage(ChatMessage(
         message: answer,
         isUser: false,
         timestamp: DateTime.now(),
       ));
+      
+      // Refresh transactions if the operation was successful
+      if (success && _transactionProvider != null) {
+        final now = DateTime.now();
+        _transactionProvider.fetchRecentTransactions(limit: 10);
+        _transactionProvider.fetchMonthlyTransactions(
+          year: now.year,
+          month: now.month,
+        );
+      }
+      
       notifyListeners();
     };
 
     _socketService.onError = (error) {
       _error = error;
       _isProcessing = false;
+      // Show user-friendly error without technical details
       _addMessage(ChatMessage(
-        message: 'Lỗi: $error',
+        message: 'Đã xảy ra lỗi. Vui lòng thử lại.',
         isUser: false,
         timestamp: DateTime.now(),
         status: 'error',
@@ -88,6 +107,7 @@ class ChatProvider with ChangeNotifier {
     _socketService.onDisconnected = () {
       _isConnected = false;
       _isProcessing = false;
+      // Don't show error message for disconnections - just update status
       notifyListeners();
     };
   }

@@ -5,7 +5,7 @@ import { Transaction, ITransaction } from '../models/Transaction';
 /**
  * Add expense tool
  */
-export function createAddExpenseTool() {
+export function createAddExpenseTool(userId?: string) {
   return new DynamicStructuredTool({
     name: 'add_expense',
     description:
@@ -23,6 +23,7 @@ export function createAddExpenseTool() {
 
       try {
         const transaction = await Transaction.create({
+          userId: userId || 'default', // Use provided userId or 'default'
           amount,
           category,
           note: note || '',
@@ -47,7 +48,7 @@ export function createAddExpenseTool() {
 /**
  * Get monthly expenses tool
  */
-export function createGetMonthlyExpensesTool() {
+export function createGetMonthlyExpensesTool(userId?: string) {
   return new DynamicStructuredTool({
     name: 'get_monthly_expenses',
     description:
@@ -58,13 +59,14 @@ export function createGetMonthlyExpensesTool() {
       month: z.number().int().gte(1).max(12).describe('Month (1-12)'),
     }),
     func: async ({ year, month }) => {
-      console.log(`📊 Getting expenses for ${month}/${year}`);
+      console.log(`📊 Getting expenses for ${month}/${year} - userId: ${userId}`);
 
       try {
         const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
         const endDate = `${year}-${String(month).padStart(2, '0')}-31`;
 
         const transactions = await Transaction.find({
+          userId: userId || 'default',
           date: { $gte: startDate, $lte: endDate },
         }).sort({ date: -1 });
 
@@ -107,7 +109,7 @@ export function createGetMonthlyExpensesTool() {
 /**
  * Get expense statistics tool
  */
-export function createGetExpenseStatsTool() {
+export function createGetExpenseStatsTool(userId?: string) {
   return new DynamicStructuredTool({
     name: 'get_expense_stats',
     description:
@@ -118,13 +120,14 @@ export function createGetExpenseStatsTool() {
       month: z.number().int().gte(1).max(12).describe('Month to analyze'),
     }),
     func: async ({ year, month }) => {
-      console.log(`📈 Getting statistics for ${month}/${year}`);
+      console.log(`📈 Getting statistics for ${month}/${year} - userId: ${userId}`);
 
       try {
         const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
         const endDate = `${year}-${String(month).padStart(2, '0')}-31`;
 
         const transactions = await Transaction.find({
+          userId: userId || 'default',
           date: { $gte: startDate, $lte: endDate },
         });
 
@@ -175,7 +178,7 @@ export function createGetExpenseStatsTool() {
 /**
  * Delete expense tool
  */
-export function createDeleteExpenseTool() {
+export function createDeleteExpenseTool(userId?: string) {
   return new DynamicStructuredTool({
     name: 'delete_expense',
     description:
@@ -188,11 +191,11 @@ export function createDeleteExpenseTool() {
       limit: z.number().int().gte(1).optional().default(1).describe('Number of transactions to delete (default: 1, most recent)'),
     }),
     func: async ({ category, deleteAll, limit = 1 }) => {
-      console.log(`🗑️ Delete request - category: ${category}, deleteAll: ${deleteAll}, limit: ${limit}`);
+      console.log(`🗑️ Delete request - category: ${category}, deleteAll: ${deleteAll}, limit: ${limit}, userId: ${userId}`);
 
       try {
         if (deleteAll) {
-          const result = await Transaction.deleteMany({});
+          const result = await Transaction.deleteMany({ userId: userId || 'default' });
           return JSON.stringify({
             success: true,
             message: `Đã xóa tất cả ${result.deletedCount} giao dịch`,
@@ -202,7 +205,10 @@ export function createDeleteExpenseTool() {
 
         if (category) {
           // Delete by category (most recent first)
-          const transactions = await Transaction.find({ category })
+          const transactions = await Transaction.find({ 
+            userId: userId || 'default',
+            category 
+          })
             .sort({ date: -1 })
             .limit(limit);
 
@@ -224,7 +230,7 @@ export function createDeleteExpenseTool() {
         }
 
         // Delete most recent transaction(s)
-        const transactions = await Transaction.find()
+        const transactions = await Transaction.find({ userId: userId || 'default' })
           .sort({ date: -1, _id: -1 })
           .limit(limit);
 

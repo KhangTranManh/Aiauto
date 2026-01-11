@@ -13,9 +13,13 @@ export function authenticate(
   next: NextFunction
 ): void {
   try {
-    const token = req.headers.authorization?.replace('Bearer ', '');
+    const authHeader = req.headers.authorization;
+    console.log('🔐 Auth header:', authHeader ? 'Present' : 'Missing');
+    
+    const token = authHeader?.replace('Bearer ', '');
 
     if (!token) {
+      console.log('❌ No token provided');
       res.status(401).json({
         success: false,
         error: 'No token provided',
@@ -25,8 +29,10 @@ export function authenticate(
 
     const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
     req.userId = decoded.userId;
+    console.log('✅ Token valid for user:', req.userId);
     next();
   } catch (error) {
+    console.log('❌ Token validation failed:', error instanceof Error ? error.message : error);
     res.status(401).json({
       success: false,
       error: 'Invalid or expired token',
