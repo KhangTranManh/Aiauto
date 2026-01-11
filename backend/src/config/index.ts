@@ -22,10 +22,6 @@ interface Config {
     apiKey: string;
     model: string;
   };
-  puppeteer: {
-    headless: boolean;
-    timeout: number;
-  };
   agent: {
     maxProductsPerSearch: number;
   };
@@ -74,10 +70,6 @@ export const config: Config = {
     apiKey: process.env.GOOGLE_API_KEY || '',
     model: process.env.GOOGLE_MODEL || 'gemini-1.5-flash',
   },
-  puppeteer: {
-    headless: process.env.PUPPETEER_HEADLESS === 'true',
-    timeout: parseInt(process.env.PUPPETEER_TIMEOUT || '30000', 10),
-  },
   agent: {
     maxProductsPerSearch: parseInt(process.env.MAX_PRODUCTS_PER_SEARCH || '5', 10),
   },
@@ -95,9 +87,5 @@ export function logConfig(): void {
   console.log(`   - Port: ${config.server.port}`);
   console.log(`   - AI Provider: ${config.ai.provider.toUpperCase()}`);
   console.log(`   - AI Model: ${config.ai.model}`);
-  if (config.ai.provider === 'ollama') {
-    console.log(`   - Ollama URL: ${config.ai.ollamaBaseUrl}`);
-  }
-  console.log(`   - Puppeteer Headless: ${config.puppeteer.headless}`);
   console.log(`   - CORS Origins: ${config.server.corsOrigins.join(', ')}`);
 }
