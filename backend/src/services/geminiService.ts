@@ -1,22 +1,18 @@
-import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
-import { HumanMessage } from '@langchain/core/messages';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { config } from '../config';
 
 /**
  * Initialize Google Gemini AI model
  */
-async function initializeAIModel(temperature: number = config.ai.temperature) {
+function initializeAIModel() {
   // Use Google Gemini only
   if (!config.google.apiKey) {
     throw new Error('Google API key not configured. Please add GOOGLE_API_KEY to .env');
   }
   
   console.log(`🤖 Using Google Gemini: ${config.google.model}`);
-  return new ChatGoogleGenerativeAI({
-    model: config.google.model,
-    temperature,
-    apiKey: config.google.apiKey,
-  });
+  const genAI = new GoogleGenerativeAI(config.google.apiKey);
+  return genAI.getGenerativeModel({ model: config.google.model });
 }
 
 /**
@@ -40,7 +36,7 @@ export async function scanReceipt(receiptText: string): Promise<ReceiptData> {
     console.log(`📸 Scanning receipt text...`);
 
     // Initialize AI model
-    const model = await initializeAIModel(0.1); // Lower temperature for more precise extraction
+    const model = initializeAIModel();
 
     // Create the prompt
     const prompt = `Bạn PHẢI đọc và phân tích hóa đơn BÊN DƯỚI. KHÔNG được tự nghĩ, KHÔNG được dùng ví dụ mẫu.
@@ -75,10 +71,8 @@ Trả về CHỈ MỘT dòng JSON (không markdown, không giải thích):
 {"amount":<số từ hóa đơn>,"category":"<phân loại>","merchant":"<tên từ hóa đơn>","date":"YYYY-MM-DD","rawText":"<tóm tắt>"}`;
 
     // Generate content
-    const result = await model.invoke([new HumanMessage(prompt)]);
-    const response = typeof result.content === 'string' 
-      ? result.content 
-      : JSON.stringify(result.content);
+    const result = await model.generateContent(prompt);
+    const response = result.response.text();
 
     console.log('📄 Receipt text:', receiptText.substring(0, 200) + '...');
     console.log('🤖 AI raw response:', response);
