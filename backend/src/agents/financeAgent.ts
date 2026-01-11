@@ -1,5 +1,4 @@
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
-import { ChatOllama } from '@langchain/ollama';
 import { HumanMessage, SystemMessage, AIMessage, ToolMessage } from '@langchain/core/messages';
 import { Socket } from 'socket.io';
 import { config } from '../config';
@@ -57,33 +56,7 @@ Hãy thân thiện nhưng ngắn gọn bằng tiếng Việt.`;
 }
 
 async function initializeModel() {
-  // Try Ollama first if configured
-  if (config.ai.provider === 'ollama' || !config.google.apiKey) {
-    try {
-      console.log(`🔄 Trying Ollama: ${config.ai.model} at ${config.ai.ollamaBaseUrl}`);
-      const ollamaModel = new ChatOllama({
-        model: config.ai.model,
-        baseUrl: config.ai.ollamaBaseUrl,
-        temperature: config.ai.temperature,
-      });
-      
-      // Test connection with a simple message
-      await ollamaModel.invoke([new HumanMessage('test')]);
-      console.log(`✅ Connected to Ollama successfully`);
-      return ollamaModel;
-    } catch (error) {
-      console.warn(`⚠️ Ollama not available:`, error instanceof Error ? error.message : 'Unknown error');
-      
-      // Fall back to Google Gemini if API key is available
-      if (config.google.apiKey) {
-        console.log(`🔄 Falling back to Google Gemini...`);
-      } else {
-        throw new Error('Ollama is not available and no Google API key configured. Please start Ollama or add GOOGLE_API_KEY to .env');
-      }
-    }
-  }
-  
-  // Use Google Gemini
+  // Use Google Gemini only
   if (!config.google.apiKey) {
     throw new Error('Google API key not configured. Please add GOOGLE_API_KEY to .env');
   }

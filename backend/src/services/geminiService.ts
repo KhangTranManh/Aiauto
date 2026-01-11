@@ -1,39 +1,12 @@
-import { ChatOllama } from '@langchain/ollama';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import { HumanMessage } from '@langchain/core/messages';
 import { config } from '../config';
 
 /**
- * Initialize AI model with automatic fallback from Ollama to Google Gemini
+ * Initialize Google Gemini AI model
  */
 async function initializeAIModel(temperature: number = config.ai.temperature) {
-  // Try Ollama first if configured
-  if (config.ai.provider === 'ollama' || !config.google.apiKey) {
-    try {
-      console.log(`🔄 Trying Ollama: ${config.ai.model} at ${config.ai.ollamaBaseUrl}`);
-      const ollamaModel = new ChatOllama({
-        model: config.ai.model,
-        baseUrl: config.ai.ollamaBaseUrl,
-        temperature,
-      });
-      
-      // Test connection with a simple message
-      await ollamaModel.invoke([new HumanMessage('test')]);
-      console.log(`✅ Connected to Ollama successfully`);
-      return ollamaModel;
-    } catch (error) {
-      console.warn(`⚠️ Ollama not available:`, error instanceof Error ? error.message : 'Unknown error');
-      
-      // Fall back to Google Gemini if API key is available
-      if (config.google.apiKey) {
-        console.log(`🔄 Falling back to Google Gemini...`);
-      } else {
-        throw new Error('Ollama is not available and no Google API key configured. Please start Ollama or add GOOGLE_API_KEY to .env');
-      }
-    }
-  }
-  
-  // Use Google Gemini
+  // Use Google Gemini only
   if (!config.google.apiKey) {
     throw new Error('Google API key not configured. Please add GOOGLE_API_KEY to .env');
   }
@@ -58,7 +31,7 @@ export interface ReceiptData {
 }
 
 /**
- * Scan receipt text and extract transaction data using local Ollama AI
+ * Scan receipt text and extract transaction data using Google Gemini AI
  * @param receiptText - Text content from the receipt
  * @returns Extracted receipt data
  */
@@ -66,7 +39,7 @@ export async function scanReceipt(receiptText: string): Promise<ReceiptData> {
   try {
     console.log(`📸 Scanning receipt text...`);
 
-    // Initialize AI model with automatic fallback
+    // Initialize AI model
     const model = await initializeAIModel(0.1); // Lower temperature for more precise extraction
 
     // Create the prompt

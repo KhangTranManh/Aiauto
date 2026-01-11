@@ -14,10 +14,9 @@ interface Config {
     corsOrigins: string[];
   };
   ai: {
-    provider: 'google' | 'ollama';
+    provider: 'google';
     model: string;
     temperature: number;
-    ollamaBaseUrl?: string;
   };
   google: {
     apiKey: string;
@@ -37,20 +36,15 @@ interface Config {
  * @throws {Error} if required variables are missing
  */
 function validateEnv(): void {
-  const provider = process.env.AI_PROVIDER || 'ollama';
-  
-  if (provider === 'google') {
-    const required = ['GOOGLE_API_KEY'];
-    const missing = required.filter((key) => !process.env[key]);
+  const required = ['GOOGLE_API_KEY'];
+  const missing = required.filter((key) => !process.env[key]);
 
-    if (missing.length > 0) {
-      throw new Error(
-        `Missing required environment variables for Google AI: ${missing.join(', ')}\n` +
-        `Please copy .env.example to .env and fill in the values.`
-      );
-    }
+  if (missing.length > 0) {
+    throw new Error(
+      `Missing required environment variables for Google AI: ${missing.join(', ')}\n` +
+      `Please add GOOGLE_API_KEY to your .env file or Render environment variables.`
+    );
   }
-  // Ollama doesn't require API keys, just needs to be running locally
 }
 
 /**
@@ -72,10 +66,9 @@ export const config: Config = {
     corsOrigins: parseCorsOrigins(),
   },
   ai: {
-    provider: (process.env.AI_PROVIDER || 'ollama') as 'google' | 'ollama',
-    model: process.env.AI_MODEL || 'llama3.1:8b',
+    provider: 'google',
+    model: process.env.AI_MODEL || 'gemini-2.0-flash-exp',
     temperature: parseFloat(process.env.AI_TEMPERATURE || '0.7'),
-    ollamaBaseUrl: process.env.OLLAMA_BASE_URL || 'http://localhost:11434',
   },
   google: {
     apiKey: process.env.GOOGLE_API_KEY || '',
