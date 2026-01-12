@@ -21,6 +21,7 @@
     "outDir": "./dist",
     "removeComments": true,
     "sourceMap": true,
+    "incremental": true,
     
     /* Interop Constraints */
     "esModuleInterop": true,
