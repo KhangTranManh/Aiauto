@@ -5,7 +5,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/transaction_provider.dart';
 import '../models/transaction_model.dart';
-import '../services/api_service.dart';
+import '../services/socket_service.dart';
 
 /// Monthly Report Screen - Display monthly statistics
 class MonthlyReportScreen extends StatefulWidget {
@@ -18,8 +18,8 @@ class MonthlyReportScreen extends StatefulWidget {
 class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
   late int _selectedYear;
   late int _selectedMonth;
-  final ApiService _apiService = ApiService();
-  Map<String, dynamic>? _forecast;
+  final SocketService _socketService = SocketService();
+  String? _aiForecast;
   bool _isForecastLoading = false;
   double _monthlyBudget = 10000000; // Default
 
@@ -30,11 +30,37 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
     _selectedYear = now.year;
     _selectedMonth = now.month;
     _loadBudget();
+    _setupSocketCallbacks();
+    _socketService.connect(); // Connect socket early
     
     // Fetch initial data
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _fetchData();
     });
+  }
+
+  void _setupSocketCallbacks() {
+    _socketService.onConnected = (_) {
+      // Connected, ready to request forecast
+    };
+
+    _socketService.onAgentResponse = (response) {
+      if (mounted) {
+        setState(() {
+          _aiForecast = response['answer'] ?? 'Không thể tạo dự báo.';
+          _isForecastLoading = false;
+        });
+      }
+    };
+
+    _socketService.onError = (error) {
+      if (mounted) {
+        setState(() {
+          _aiForecast = null;
+          _isForecastLoading = false;
+        });
+      }
+    };
   }
 
   Future<void> _loadBudget() async {
@@ -45,38 +71,85 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
   }
 
   void _fetchData() {
-    context.read<TransactionProvider>().fetchMonthlyTransactions(
+    final provider = context.read<TransactionProvider>();
+    provider.fetchMonthlyTransactions(
           year: _selectedYear,
           month: _selectedMonth,
         );
-    // Fetch forecast only for current month
-    final now = DateTime.now();
-    if (_selectedYear == now.year && _selectedMonth == now.month) {
-      _fetchForecast();
-    } else {
-      setState(() {
-        _forecast = null; // Clear forecast for past months
-      });
-    }
+    // Clear forecast state when fetching new data
+    setState(() {
+      _aiForecast = null;
+      _isForecastLoading = false;
+    });
   }
 
-  Future<void> _fetchForecast() async {
+  Future<void> _fetchAIForecast() async {
     setState(() {
       _isForecastLoading = true;
     });
 
     try {
-      final forecast = await _apiService.getForecast(budget: _monthlyBudget);
-      setState(() {
-        _forecast = forecast;
-        _isForecastLoading = false;
-      });
+      // Wait a bit for socket to connect if not already connected
+      int retries = 0;
+      while (!_socketService.isConnected && retries < 10) {
+        await Future.delayed(const Duration(milliseconds: 300));
+        retries++;
+      }
+
+      if (!_socketService.isConnected) {
+        _socketService.connect();
+        await Future.delayed(const Duration(seconds: 1));
+      }
+
+      final provider = context.read<TransactionProvider>();
+      final transactions = provider.monthlyTransactions;
+      final summary = provider.monthlySummary;
+      
+      // Build spending summary
+      String spendingSummary = '';
+      if (transactions.isNotEmpty && summary != null) {
+        final total = (summary['total'] is int) 
+            ? (summary['total'] as int).toDouble() 
+            : summary['total'] as double;
+        final categoryTotals = provider.getCategoryTotals(transactions);
+        
+        spendingSummary = 'Chi tiêu đến nay: ${NumberFormat.currency(locale: 'vi_VN', symbol: 'đ', decimalDigits: 0).format(total)}. ';
+        spendingSummary += 'Phân bổ: ';
+        categoryTotals.forEach((category, amount) {
+          spendingSummary += '$category ${NumberFormat.currency(locale: 'vi_VN', symbol: 'đ', decimalDigits: 0).format(amount)}, ';
+        });
+      } else {
+        spendingSummary = 'Chưa có giao dịch nào trong tháng này. ';
+      }
+      
+      final now = DateTime.now();
+      final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
+      final currentDay = now.day;
+      
+      final prompt = '''
+Hãy phân tích và dự báo chi tiêu của tôi:
+
+📊 THÔNG TIN HIỆN TẠI:
+- Ngân sách tháng ${_selectedMonth}: ${NumberFormat.currency(locale: 'vi_VN', symbol: 'đ', decimalDigits: 0).format(_monthlyBudget)}
+- Đã qua: ngày $currentDay/$daysInMonth (${(currentDay / daysInMonth * 100).toStringAsFixed(0)}% tháng)
+$spendingSummary
+
+🎯 YÊU CẦU:
+1. Dự đoán tổng chi tiêu cuối tháng dựa trên xu hướng hiện tại
+2. Đánh giá mức độ an toàn (An toàn/Cảnh báo/Nguy hiểm)
+3. Đưa ra lời khuyên cụ thể để kiểm soát chi tiêu
+4. Gợi ý điều chỉnh ngân sách cho các danh mục
+
+Hãy trả lời ngắn gọn, rõ ràng với emoji phù hợp.''';
+      
+      _socketService.sendMessage(prompt);
+      
     } catch (e) {
       setState(() {
-        _forecast = null;
+        _aiForecast = null;
         _isForecastLoading = false;
       });
-      debugPrint('Forecast error: $e');
+      debugPrint('AI Forecast error: $e');
     }
   }
 
@@ -98,6 +171,18 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
       ),
       body: Consumer<TransactionProvider>(
         builder: (context, provider, child) {
+          // Trigger AI forecast when data is loaded and it's the current month
+          if (!provider.isLoading && 
+              provider.monthlyTransactions.isNotEmpty && 
+              _aiForecast == null && 
+              !_isForecastLoading) {
+            final now = DateTime.now();
+            if (_selectedYear == now.year && _selectedMonth == now.month) {
+              // Use Future.microtask to avoid calling setState during build
+              Future.microtask(() => _fetchAIForecast());
+            }
+          }
+
           if (provider.isLoading) {
             return const Center(
               child: CircularProgressIndicator(),
@@ -170,17 +255,21 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
               _buildMonthSelector(),
               const SizedBox(height: 16),
 
-              // Forecast card (only for current month)
-              if (_forecast != null) ...[
-                _buildForecastCard(_forecast!),
+              // AI Forecast card (only for current month)
+              if (_aiForecast != null) ...[
+                _buildAIForecastCard(_aiForecast!),
                 const SizedBox(height: 16),
               ],
               if (_isForecastLoading) ...[
-                const Card(
+                Card(
                   child: Padding(
-                    padding: EdgeInsets.all(24),
-                    child: Center(
-                      child: CircularProgressIndicator(),
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      children: const [
+                        CircularProgressIndicator(),
+                        SizedBox(height: 16),
+                        Text('AI đang phân tích chi tiêu của bạn...'),
+                      ],
                     ),
                   ),
                 ),
@@ -210,38 +299,10 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
     );
   }
 
-  Widget _buildForecastCard(Map<String, dynamic> forecast) {
-    final currentSpent = forecast['current_spent'] as int;
-    final predictedTotal = forecast['predicted_total'] as int;
-    final safetyStatus = forecast['safety_status'] as String;
-    final message = forecast['message'] as String;
-    final budget = forecast['budget'] as int;
-    final currentDate = forecast['current_date'] as int;
-    final daysInMonth = forecast['days_in_month'] as int;
-
-    // Determine color based on safety status
-    Color statusColor;
-    IconData statusIcon;
-    switch (safetyStatus) {
-      case 'Danger':
-        statusColor = Colors.red;
-        statusIcon = Icons.warning;
-        break;
-      case 'Warning':
-        statusColor = Colors.orange;
-        statusIcon = Icons.error_outline;
-        break;
-      default:
-        statusColor = Colors.green;
-        statusIcon = Icons.check_circle;
-    }
-
-    final percentComplete = (currentDate / daysInMonth * 100).toInt();
-    final percentBudget = (predictedTotal / budget * 100).toInt();
-
+  Widget _buildAIForecastCard(String forecast) {
     return Card(
       elevation: 4,
-      color: statusColor.withOpacity(0.1),
+      color: Colors.blue[50],
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -250,225 +311,54 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
             // Header
             Row(
               children: [
-                Icon(Icons.trending_up, color: statusColor, size: 28),
+                Icon(Icons.psychology, color: Colors.blue[700], size: 28),
                 const SizedBox(width: 12),
                 const Expanded(
                   child: Text(
-                    'DỰ ĐOÁN CHI TIÊU',
+                    '🤖 DỰ BÁO THÔNG MINH',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: statusColor,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(statusIcon, color: Colors.white, size: 16),
-                      const SizedBox(width: 4),
-                      Text(
-                        safetyStatus == 'Danger' ? 'NGUY HIỂM' : 
-                        safetyStatus == 'Warning' ? 'CẢNH BÁO' : 'AN TOÀN',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
+                IconButton(
+                  icon: const Icon(Icons.refresh),
+                  onPressed: _fetchAIForecast,
+                  tooltip: 'Làm mới dự báo',
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-
-            // Progress indicator
+            const Divider(),
+            const SizedBox(height: 8),
+            // AI Forecast Content
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.blue.withOpacity(0.3)),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Tiến độ tháng: Ngày $currentDate/$daysInMonth',
-                        style: const TextStyle(fontSize: 12, color: Colors.grey),
-                      ),
-                      Text(
-                        '$percentComplete%',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: const Color.fromARGB(255, 10, 1, 1),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  LinearProgressIndicator(
-                    value: currentDate / daysInMonth,
-                    backgroundColor: Colors.grey[300],
-                    color: Colors.blue,
-                    minHeight: 6,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Current vs Predicted
-            Row(
-              children: [
-                Expanded(
-                  child: _buildStatBox(
-                    'Đã chi',
-                    NumberFormat.currency(
-                      locale: 'vi_VN',
-                      symbol: 'đ',
-                      decimalDigits: 0,
-                    ).format(currentSpent),
-                    Colors.blue,
-                    Icons.shopping_cart,
-                  ),
+              child: Text(
+                forecast,
+                style: const TextStyle(
+                  fontSize: 14,
+                  height: 1.5,
+                  color: Colors.black87,
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildStatBox(
-                    'Dự đoán cuối tháng',
-                    NumberFormat.currency(
-                      locale: 'vi_VN',
-                      symbol: 'đ',
-                      decimalDigits: 0,
-                    ).format(predictedTotal),
-                    statusColor,
-                    Icons.auto_graph,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            // Budget progress
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'So với ngân sách',
-                        style: TextStyle(fontSize: 12, color: Colors.grey),
-                      ),
-                      Text(
-                        '$percentBudget%',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: statusColor,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  LinearProgressIndicator(
-                    value: (predictedTotal / budget).clamp(0.0, 1.0),
-                    backgroundColor: Colors.grey[300],
-                    color: statusColor,
-                    minHeight: 6,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Ngân sách: ${NumberFormat.currency(locale: 'vi_VN', symbol: 'đ', decimalDigits: 0).format(budget)}',
-                    style: const TextStyle(fontSize: 11, color: Colors.grey),
-                  ),
-                ],
               ),
             ),
-            const SizedBox(height: 16),
-
-            // Message
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: statusColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: statusColor.withOpacity(0.3)),
-              ),
-              child: Row(
-                children: [
-                  Icon(statusIcon, color: statusColor, size: 20),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      message,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: statusColor.withOpacity(0.9),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ],
+            const SizedBox(height: 12),
+            Text(
+              '💡 Phân tích bởi AI dựa trên lịch sử chi tiêu và ngân sách của bạn',
+              style: TextStyle(
+                fontSize: 11,
+                color: Colors.grey[600],
+                fontStyle: FontStyle.italic,
               ),
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildStatBox(String label, String value, Color color, IconData icon) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, color: color, size: 16),
-              const SizedBox(width: 4),
-              Expanded(
-                child: Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Colors.grey[600],
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-              color: Colors.grey[800],
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -860,7 +750,7 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
 
   @override
   void dispose() {
-    _apiService.dispose();
+    _socketService.dispose();
     super.dispose();
   }
 }
